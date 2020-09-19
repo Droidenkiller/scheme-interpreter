@@ -5,10 +5,10 @@
 
 using namespace std;
 
-bool checkFloat(Reader& _reader, string& _input, double _expectedValue)
+bool checkFloat(string& _input, double _expectedValue)
 {
 	bool result = false;
-	ScmObject* object = _reader.ReadNextSymbol(_input);
+	shared_ptr<ScmObject> object = Reader::ReadNextSymbol(_input);
 
 	if (object != nullptr)
 	{
@@ -16,7 +16,7 @@ bool checkFloat(Reader& _reader, string& _input, double _expectedValue)
 		{
 		case ScmObjectType::FLOAT:
 		{
-			double value = static_cast<ScmObject_Float*>(object)->getValue();
+			double value = static_pointer_cast<ScmObject_Float>(object)->getValue();
 			if (abs(value - _expectedValue) < numeric_limits<float>::epsilon())
 			{
 				cout << "Float with expected value of " << _expectedValue << " passed parsing test.\n";
@@ -31,7 +31,7 @@ bool checkFloat(Reader& _reader, string& _input, double _expectedValue)
 		break;
 		case ScmObjectType::INTERNAL_ERROR:
 			cerr << "Internal error on float with value: " << _expectedValue << ". Error: " <<
-				static_cast<ScmObject_InternalError*>(object)->getMessage() << endl;
+				static_pointer_cast<ScmObject_InternalError>(object)->getMessage() << endl;
 			break;
 		default:
 			cerr << "Float with expected value of " << _expectedValue << " was parsed to wrong type.\n";
@@ -43,11 +43,10 @@ bool checkFloat(Reader& _reader, string& _input, double _expectedValue)
 		cerr << "Got nullptr from parsing. Expected value was: " << _expectedValue << endl;
 	}
 
-	delete object;
 	return result;
 }
 
-bool testFloats(Reader& _reader)
+bool testFloats()
 {
 	bool result = true;
 	string correctFormats = "-2.33 234.164,.45  , ,,  -32453.2351";
@@ -55,7 +54,7 @@ bool testFloats(Reader& _reader)
 
 	for (int i = 0; i < 4; ++i)
 	{
-		if (!checkFloat(_reader, correctFormats, numbers[i]))
+		if (!checkFloat(correctFormats, numbers[i]))
 		{
 			result = false;
 		}
@@ -64,10 +63,10 @@ bool testFloats(Reader& _reader)
 	return result;
 }
 
-bool checkInteger(Reader& _reader, string& _input, long long _expectedValue)
+bool checkInteger(string& _input, long long _expectedValue)
 {
 	bool result = false;
-	ScmObject* object = _reader.ReadNextSymbol(_input);
+	shared_ptr<ScmObject> object = Reader::ReadNextSymbol(_input);
 
 	if (object != nullptr)
 	{
@@ -75,7 +74,7 @@ bool checkInteger(Reader& _reader, string& _input, long long _expectedValue)
 		{
 		case ScmObjectType::INT:
 		{
-			long long value = static_cast<ScmObject_Integer*>(object)->getValue();
+			long long value = static_pointer_cast<ScmObject_Integer>(object)->getValue();
 			if (value == _expectedValue)
 			{
 				cout << "Integer with expected value of " << _expectedValue << " passed parsing test.\n";
@@ -90,7 +89,7 @@ bool checkInteger(Reader& _reader, string& _input, long long _expectedValue)
 		break;
 		case ScmObjectType::INTERNAL_ERROR:
 			cerr << "Internal error on integer with value: " << _expectedValue << ". Error: " <<
-				static_cast<ScmObject_InternalError*>(object)->getMessage() << endl;
+				static_pointer_cast<ScmObject_InternalError>(object)->getMessage() << endl;
 			break;
 		default:
 			cerr << "Integer with expected value of " << _expectedValue << " was parsed to wrong type.\n";
@@ -102,11 +101,10 @@ bool checkInteger(Reader& _reader, string& _input, long long _expectedValue)
 		cerr << "Got nullptr from parsing. Expected value was: " << _expectedValue << endl;
 	}
 
-	delete object;
 	return result;
 }
 
-bool testIntegers(Reader& _reader)
+bool testIntegers()
 {
 	bool result = true;
 	string correctFormats = "-233 234164,045  , ,,  -324532351, 0";
@@ -114,7 +112,7 @@ bool testIntegers(Reader& _reader)
 
 	for (int i = 0; i < 5; ++i)
 	{
-		if (!checkInteger(_reader, correctFormats, numbers[i]))
+		if (!checkInteger(correctFormats, numbers[i]))
 		{
 			result = false;
 		}
@@ -123,15 +121,15 @@ bool testIntegers(Reader& _reader)
 	return result;
 }
 
-bool testScheme(Reader& _reader)
+bool testScheme()
 {
 	bool result = true;
 
-	if (!testFloats(_reader))
+	if (!testFloats())
 	{
 		result = false;
 	}
-	if (!testIntegers(_reader))
+	if (!testIntegers())
 	{
 		result = false;
 	}

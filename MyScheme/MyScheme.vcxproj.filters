@@ -72,6 +72,9 @@
     <ClCompile Include="ScmObject_FunctionExecution.cpp">
       <Filter>Quelldateien\ScmObjects</Filter>
     </ClCompile>
+    <ClCompile Include="ScmObject_QuoteSymbol.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Reader.h">
@@ -124,6 +127,9 @@
     </ClInclude>
     <ClInclude Include="ScmObject_FunctionExecution.h">
       <Filter>Headerdateien\ScmObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="ScmObject_QuoteSymbol.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

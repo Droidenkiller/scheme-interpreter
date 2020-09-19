@@ -2,19 +2,20 @@
 #include "ScmObjectIncludes.h"
 #include <vector>
 #include <iostream>
+#include <memory>
 using namespace std;
 
-ScmObject* readString(string& _remainingInput)
+shared_ptr<ScmObject> readString(string& _remainingInput)
 {
 	string input = _remainingInput;
-	ScmObject* result = nullptr;
+	shared_ptr<ScmObject> result = nullptr;
 	int i = 1;
 
 	for (; i < input.length(); ++i)
 	{
 		if (input[i] == '"')
 		{
-			result = new ScmObject_String(input.substr(1, i - 1));
+			result = make_shared<ScmObject_String>(input.substr(1, i - 1));
 			break;
 		}
 	}
@@ -23,9 +24,9 @@ ScmObject* readString(string& _remainingInput)
 	return result;
 }
 
-ScmObject* readNumber(string& _remainingInput)
+shared_ptr<ScmObject> readNumber(string& _remainingInput)
 {
-	ScmObject* result = nullptr;
+	shared_ptr<ScmObject> result = nullptr;
 	string input = _remainingInput;
 	string foundNumber = "";
 	bool endOfNumberReached = false;
@@ -45,7 +46,7 @@ ScmObject* readNumber(string& _remainingInput)
 			{
 				if (result == nullptr)
 				{
-					result = new ScmObject_InternalError("\"-\" found in the middle of a number. This is invalid.");
+					result = make_shared<ScmObject_InternalError>("\"-\" found in the middle of a number. This is invalid.");
 				}
 			}
 			break;
@@ -71,7 +72,7 @@ ScmObject* readNumber(string& _remainingInput)
 			{
 				if (result == nullptr)
 				{
-					result = new ScmObject_InternalError("Multiple dots found in number. This is invalid.");
+					result = make_shared<ScmObject_InternalError>("Multiple dots found in number. This is invalid.");
 				}
 			}
 			break;
@@ -81,6 +82,8 @@ ScmObject* readNumber(string& _remainingInput)
 			endOfNumberReached = true;
 			break;
 		default:
+			_remainingInput = "";
+			return make_shared<ScmObject_InternalError>("Invalid character found in number.");
 			break;
 		}
 	}
@@ -89,11 +92,11 @@ ScmObject* readNumber(string& _remainingInput)
 	{
 		if (isFloatingPoint)
 		{
-			result = new ScmObject_Float(foundNumber);
+			result = make_shared<ScmObject_Float>(foundNumber);
 		}
 		else
 		{
-			result = new ScmObject_Integer(foundNumber);
+			result = make_shared<ScmObject_Integer>(foundNumber);
 		}
 	}
 
@@ -102,7 +105,7 @@ ScmObject* readNumber(string& _remainingInput)
 	return result;
 }
 
-ScmObject* readBool(string& _remainingInput)
+shared_ptr<ScmObject> readBool(string& _remainingInput)
 {
 #ifdef DEBUG
 	if (_remainingInput[0] != '#')
@@ -115,7 +118,7 @@ ScmObject* readBool(string& _remainingInput)
 
 	if (_remainingInput.length() > 1 && !(_remainingInput[1] == ' ' || _remainingInput[1] == ',' || _remainingInput[1] == ')'))
 	{
-		return new ScmObject_InternalError("Tried reading bool but got more characters than expected. Please only use #t or #f.");
+		return make_shared<ScmObject_InternalError>("Tried reading bool but got more characters than expected. Please only use #t or #f.");
 	}
 
 	switch (_remainingInput[0])
@@ -123,18 +126,18 @@ ScmObject* readBool(string& _remainingInput)
 	case 't':
 	case 'T':
 		_remainingInput = _remainingInput.substr(1);
-		return new ScmObject_Bool(true);
+		return make_shared<ScmObject_Bool>(true);
 	case 'f':
 	case 'F':
 		_remainingInput = _remainingInput.substr(1);
-		return new ScmObject_Bool(false);
+		return make_shared<ScmObject_Bool>(false);
 	default:
-		return new ScmObject_InternalError("Expected bool symbol of either 't' or 'f' but got " + std::string(1, _remainingInput[0]) + " instead.");
+		return make_shared<ScmObject_InternalError>("Expected bool symbol of either 't' or 'f' but got " + std::string(1, _remainingInput[0]) + " instead.");
 		break;
 	}
 }
 
-ScmObject_Symbol* readSymbol(string& _remainingInput)
+shared_ptr<ScmObject_Symbol> readSymbol(string& _remainingInput)
 {
 	string input = _remainingInput;
 	bool endOfSymbol = false;
@@ -152,7 +155,7 @@ ScmObject_Symbol* readSymbol(string& _remainingInput)
 		}
 	}
 
-	ScmObject_Symbol* result = endOfSymbol ? new ScmObject_Symbol(input.substr(0, i - 1)) : new ScmObject_Symbol(input.substr(0, i));
+	shared_ptr<ScmObject_Symbol> result = endOfSymbol ? make_shared<ScmObject_Symbol>(input.substr(0, i - 1)) : make_shared<ScmObject_Symbol>(input.substr(0, i));
 	_remainingInput = endOfSymbol ? input.substr(i - 1) : input.substr(i);
 
 	return result;
@@ -177,7 +180,7 @@ void skipWhitespace(string& _remainingInput)
 	return;
 }
 
-ScmObject* Reader::readLambda(string& _remainingInput)
+shared_ptr<ScmObject> Reader::readLambda(string& _remainingInput)
 {
 	// First read the parameter list.
 	skipWhitespace(_remainingInput);
@@ -185,13 +188,13 @@ ScmObject* Reader::readLambda(string& _remainingInput)
 	if (_remainingInput[0] != '(')
 	{
 		_remainingInput = "";
-		return new ScmObject_InternalError("Tried to read parameter list of lambda expression but no parameter list was found.");
+		return make_shared<ScmObject_InternalError>("Tried to read parameter list of lambda expression but no parameter list was found.");
 	}
 
 	// Remove '('
 	_remainingInput = _remainingInput.substr(1);
 
-	std::vector<ScmObject_Symbol*> params{};
+	std::vector<shared_ptr<ScmObject_Symbol>> params{};
 
 	while (_remainingInput.length() > 0 && _remainingInput[0] != ')')
 	{
@@ -208,16 +211,16 @@ ScmObject* Reader::readLambda(string& _remainingInput)
 			break;
 		}
 
-		ScmObject* param = ReadNextSymbol(_remainingInput);
+		shared_ptr<ScmObject> param = ReadNextSymbol(_remainingInput);
 
 		switch (param->getType())
 		{
 		case ScmObjectType::SYMBOL:
-			params.push_back(static_cast<ScmObject_Symbol*>(param));
+			params.push_back(static_pointer_cast<ScmObject_Symbol>(param));
 			break;
 		default:
 			_remainingInput = "";
-			return new ScmObject_InternalError("Received non-symbol while reading parameter list of lambda expression. This is invalid.");
+			return make_shared<ScmObject_InternalError>("Received non-symbol while reading parameter list of lambda expression. This is invalid.");
 			break;
 		}
 	}
@@ -238,7 +241,7 @@ ScmObject* Reader::readLambda(string& _remainingInput)
 	// Then read the function body.
 	skipWhitespace(_remainingInput);
 
-	ScmObject* innerFunction = readFunctionKeyword(_remainingInput);
+	shared_ptr<ScmObject> innerFunction = readFunctionKeyword(_remainingInput);
 
 	switch (innerFunction->getType())
 	{
@@ -246,7 +249,7 @@ ScmObject* Reader::readLambda(string& _remainingInput)
 	case ScmObjectType::FUNCTION_DEFINITION:
 		break;
 	default:
-		return new ScmObject_InternalError("Reading function body failed.");
+		return make_shared<ScmObject_InternalError>("Reading function body failed.");
 		break;
 	}
 
@@ -259,7 +262,7 @@ ScmObject* Reader::readLambda(string& _remainingInput)
 	}
 	else if (_remainingInput[0] != ')')
 	{
-		return new ScmObject_InternalError("Expected ')' at the end of lambda statement. But '" + std::string(1, _remainingInput[0]) + "' was found.");
+		return make_shared<ScmObject_InternalError>("Expected ')' at the end of lambda statement. But '" + std::string(1, _remainingInput[0]) + "' was found.");
 	}
 	else
 	{
@@ -269,20 +272,20 @@ ScmObject* Reader::readLambda(string& _remainingInput)
 		// Finally, create the function definition.
 		if (innerFunction->getType() == ScmObjectType::FUNCTION_CALL)
 		{
-			return new ScmObject_FunctionDefinition(params, static_cast<ScmObject_FunctionCall*>(innerFunction));
+			return make_shared<ScmObject_FunctionDefinition>(params, static_pointer_cast<ScmObject_FunctionCall>(innerFunction));
 		}
 		else if (innerFunction->getType() == ScmObjectType::FUNCTION_DEFINITION)
 		{
-			return new ScmObject_FunctionDefinition(params, static_cast<ScmObject_FunctionDefinition*>(innerFunction));
+			return make_shared<ScmObject_FunctionDefinition>(params, static_pointer_cast<ScmObject_FunctionDefinition>(innerFunction));
 		}
 		else
 		{
-			return new ScmObject_InternalError("Expected to get lambda or function in function body, but got neither.");
+			return make_shared<ScmObject_InternalError>("Expected to get lambda or function in function body, but got neither.");
 		}
 	}
 }
 
-ScmObject* Reader::readFunctionKeyword(string& _remainingInput)
+shared_ptr<ScmObject> Reader::readFunctionKeyword(string& _remainingInput)
 {
 	int i = 0;
 
@@ -304,7 +307,7 @@ ScmObject* Reader::readFunctionKeyword(string& _remainingInput)
 	switch (_remainingInput[0])
 	{
 	case '"':
-		return new ScmObject_InternalError("Found \" when expecting a function symbol. This is invalid.");
+		return make_shared<ScmObject_InternalError>("Found \" when expecting a function symbol. This is invalid.");
 	case '0':
 	case '1':
 	case '2':
@@ -315,57 +318,116 @@ ScmObject* Reader::readFunctionKeyword(string& _remainingInput)
 	case '7':
 	case '8':
 	case '9':
-		return new ScmObject_InternalError("Found number when expecting a function symbol. This is invalid.");
+		return make_shared<ScmObject_InternalError>("Found number when expecting a function symbol. This is invalid.");
 	case '.':
-		return new ScmObject_InternalError("Found . when expecting a function symbol. This is invalid.");
+		return make_shared<ScmObject_InternalError>("Found . when expecting a function symbol. This is invalid.");
 	}
 
-	ScmObject_Symbol* functionSymbol = readSymbol(_remainingInput);
+	std::shared_ptr<ScmObject_Symbol> functionSymbol = readSymbol(_remainingInput);
 
-	if (functionSymbol->getName()->compare("lambda") == 0)
+	/*if (functionSymbol->getName()->compare("lambda") == 0)
 	{
 		return readLambda(_remainingInput);
 	}
 	else
+	{*/
+	vector<shared_ptr<ScmObject>> args;
+
+	while (_remainingInput.length() > 0 && _remainingInput[0] != ')')
 	{
-		vector<ScmObject*> args = vector<ScmObject*>();
+		skipWhitespace(_remainingInput);
 
-		while (_remainingInput.length() > 0 && _remainingInput[0] != ')')
+		// When there is no further data, we need more input.
+		if (_remainingInput.length() == 0)
 		{
-			skipWhitespace(_remainingInput);
-
-			// When there is no further data, we need more input.
-			if (_remainingInput.length() == 0)
-			{
-				return nullptr;
-			}
-			else if (_remainingInput[0] == ')')
-			{
-				break;
-			}
-
-			args.push_back(ReadNextSymbol(_remainingInput));
+			return nullptr;
+		}
+		else if (_remainingInput[0] == ')')
+		{
+			break;
 		}
 
-		// When there is no further data or we do not end with a ')', we need more input.
-		if (_remainingInput.length() == 0 || _remainingInput[0] != ')')
+		args.push_back(ReadNextSymbol(_remainingInput));
+	}
+
+	// When there is no further data or we do not end with a ')', we need more input.
+	if (_remainingInput.length() == 0 || _remainingInput[0] != ')')
+	{
+		return nullptr;
+	}
+	else
+	{
+		// Remove the closing paranthesis
+		_remainingInput = _remainingInput.substr(1);
+
+		return make_shared<ScmObject_FunctionCall>(functionSymbol, args);
+	}
+	//}
+}
+
+shared_ptr<ScmObject> readQuote(string& _remainingInput)
+{
+	// Skip the ' symbol
+	_remainingInput = _remainingInput.substr(1);
+
+	skipWhitespace(_remainingInput);
+
+	if (_remainingInput.size() == 0)
+	{
+		return nullptr;
+	}
+
+	if (_remainingInput[0] != '(')
+	{
+		std::shared_ptr<ScmObject> args = Reader::ReadNextSymbol(_remainingInput);
+		return std::make_shared<ScmObject_FunctionCall>(std::make_shared<ScmObject_Symbol>("quote"), std::vector<std::shared_ptr<ScmObject>>{args});
+	}
+	else
+	{
+		// Skip )
+		_remainingInput = _remainingInput.substr(1);
+
+		std::vector<std::shared_ptr<ScmObject>> args;
+
+		skipWhitespace(_remainingInput);
+
+		while (_remainingInput.size() > 0 && _remainingInput[0] != ')')
+		{
+			args.push_back(Reader::ReadNextSymbol(_remainingInput));
+
+			skipWhitespace(_remainingInput);
+		}
+
+		if (_remainingInput.size() == 0)
 		{
 			return nullptr;
 		}
 		else
 		{
-			// Remove the closing paranthesis
+			// Remove )
 			_remainingInput = _remainingInput.substr(1);
 
-			return new ScmObject_FunctionCall(functionSymbol, args);
+			std::shared_ptr<ScmObject_Cons> cons = nullptr;
+			for (auto it = args.rbegin(); it != args.rend(); ++it)
+			{
+				cons = std::make_shared<ScmObject_Cons>(*it, cons);
+			}
+
+			// Create an empty cons
+			if (cons == nullptr)
+			{
+				cons = std::make_shared<ScmObject_Cons>(nullptr, nullptr);
+			}
+
+			return cons;
 		}
 	}
 }
 
-ScmObject* Reader::ReadNextSymbol(string& _remainingInput)
+shared_ptr<ScmObject> Reader::ReadNextSymbol(string& _remainingInput)
 {
 	string input = _remainingInput;
-	ScmObject* result = nullptr;
+	shared_ptr<ScmObject> result = nullptr;
 	bool foundObject = false;
 	int i = 0;
 
@@ -409,7 +471,12 @@ ScmObject* Reader::ReadNextSymbol(string& _remainingInput)
 			break;
 		case ')':
 			_remainingInput = "";
-			result = new ScmObject_InternalError("Found ')' without opening brackets. This is invalid.");
+			result = make_shared<ScmObject_InternalError>("Found ')' without opening brackets. This is invalid.");
+			foundObject = true;
+			break;
+		case '\'':
+			_remainingInput = input.substr(i);
+			result = readQuote(_remainingInput);
 			foundObject = true;
 			break;
 		default:

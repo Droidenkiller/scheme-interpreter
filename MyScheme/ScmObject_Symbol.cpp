@@ -22,12 +22,17 @@ bool ScmObject_Symbol::equals(const ScmObject* _other) const
 	}
 }
 
-ScmObject* ScmObject_Symbol::copy() const
+std::shared_ptr<const ScmObject> ScmObject_Symbol::copy() const
 {
-	return new ScmObject_Symbol(*this);
+	return std::make_shared<ScmObject_Symbol>(*this);
 }
 
 const std::string ScmObject_Symbol::getOutputString() const
 {
 	return m_name;
+}
+
+const std::string ScmObject_Symbol::getDisplayString() const
+{
+	return getOutputString();
 }

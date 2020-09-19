@@ -15,12 +15,17 @@ bool ScmObject_InternalError::equals(const ScmObject* _other) const
 	throw new std::exception("Equals() may never be called on an internal error object (ScmObject_InternalError). This means there is an error in code.");
 }
 
-ScmObject* ScmObject_InternalError::copy() const
+std::shared_ptr<const ScmObject> ScmObject_InternalError::copy() const
 {
-	return new ScmObject_InternalError(*this);
+	return std::make_shared<ScmObject_InternalError>(*this);
 }
 
 const std::string ScmObject_InternalError::getOutputString() const
 {
 	return "Internal error: " + m_message;
+}
+
+const std::string ScmObject_InternalError::getDisplayString() const
+{
+	return getOutputString();
 }

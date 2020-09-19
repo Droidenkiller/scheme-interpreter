@@ -6,6 +6,7 @@
 #include "ScmObject_InternalError.h"
 #include "ScmObject_String.h"
 #include "ScmObject_Symbol.h"
+#include "ScmObject_QuoteSymbol.h"
 #include "ScmObject_FunctionCall.h"
 #include "ScmObject_FunctionDefinition.h"
 #include "ScmObject_Bool.h"

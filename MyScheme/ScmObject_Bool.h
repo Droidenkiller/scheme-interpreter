@@ -1,5 +1,7 @@
 #pragma once
 #include "ScmObject.h"
+#include <memory>
+
 class ScmObject_Bool :
 	public ScmObject
 {
@@ -13,8 +15,10 @@ public:
 
 	bool equals(const ScmObject* _other) const;
 
-	ScmObject* copy() const;
+	std::shared_ptr<const ScmObject> copy() const;
 
 	const std::string getOutputString() const;
+
+	const std::string getDisplayString() const;
 };
 

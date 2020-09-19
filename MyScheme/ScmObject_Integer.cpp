@@ -52,9 +52,9 @@ bool ScmObject_Integer::equals(const ScmObject* _other) const
 	}
 }
 
-ScmObject* ScmObject_Integer::copy() const
+std::shared_ptr<const ScmObject> ScmObject_Integer::copy() const
 {
-	return new ScmObject_Integer(*this);
+	return std::make_shared<ScmObject_Integer>(*this);
 }
 
 const std::string ScmObject_Integer::getOutputString() const
@@ -62,4 +62,9 @@ const std::string ScmObject_Integer::getOutputString() const
 	std::ostringstream strs;
 	strs << m_value;
 	return strs.str();
+}
+
+const std::string ScmObject_Integer::getDisplayString() const
+{
+	return getOutputString();
 }

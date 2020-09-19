@@ -27,12 +27,17 @@ bool ScmObject_String::equals(const ScmObject* _other) const
 	}
 }
 
-ScmObject* ScmObject_String::copy() const
+std::shared_ptr<const ScmObject> ScmObject_String::copy() const
 {
-	return new ScmObject_String(*this);
+	return std::make_shared<ScmObject_String>(*this);
 }
 
 const std::string ScmObject_String::getOutputString() const
+{
+	return "\"" + m_value + "\"";
+}
+
+const std::string ScmObject_String::getDisplayString() const
 {
 	return m_value;
 }

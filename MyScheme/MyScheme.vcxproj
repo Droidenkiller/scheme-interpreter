@@ -152,6 +152,7 @@
     <ClCompile Include="ScmObject_FunctionDefinition.cpp" />
     <ClCompile Include="ScmObject_Integer.cpp" />
     <ClCompile Include="ScmObject_InternalError.cpp" />
+    <ClCompile Include="ScmObject_QuoteSymbol.cpp" />
     <ClCompile Include="ScmObject_String.cpp" />
     <ClCompile Include="ScmObject_Symbol.cpp" />
     <ClCompile Include="ScmObject_FunctionExecution.cpp" />
@@ -171,6 +172,7 @@
     <ClInclude Include="ScmObject_FunctionDefinition.h" />
     <ClInclude Include="ScmObject_Integer.h" />
     <ClInclude Include="ScmObject_InternalError.h" />
+    <ClInclude Include="ScmObject_QuoteSymbol.h" />
     <ClInclude Include="ScmObject_String.h" />
     <ClInclude Include="ScmObject_Symbol.h" />
     <ClInclude Include="ScmObject_FunctionExecution.h" />

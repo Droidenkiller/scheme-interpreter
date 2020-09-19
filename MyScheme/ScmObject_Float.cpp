@@ -54,9 +54,9 @@ bool ScmObject_Float::equals(const ScmObject* _other) const
 	}
 }
 
-ScmObject* ScmObject_Float::copy() const
+std::shared_ptr<const ScmObject> ScmObject_Float::copy() const
 {
-	return new ScmObject_Float(*this);
+	return std::make_shared<ScmObject_Float>(*this);
 }
 
 const std::string ScmObject_Float::getOutputString() const
@@ -64,4 +64,9 @@ const std::string ScmObject_Float::getOutputString() const
 	std::ostringstream strs;
 	strs << m_value;
 	return strs.str();
+}
+
+const std::string ScmObject_Float::getDisplayString() const
+{
+	return getOutputString();
 }

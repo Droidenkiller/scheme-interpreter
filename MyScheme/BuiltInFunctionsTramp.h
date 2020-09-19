@@ -2,5 +2,6 @@
 #include "ScmObject.h"
 #include "ScmObject_FunctionCall.h"
 #include "Environment.h"
+#include <memory>
 
-ScmObject* exec(ScmObject_FunctionExecution* _funcExec);
+std::shared_ptr<ScmObject> exec(std::shared_ptr<ScmObject_FunctionExecution> _funcExec);

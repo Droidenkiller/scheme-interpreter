@@ -1,19 +1,18 @@
 #include "Environment.h"
-#include <iostream>
 
-Environment::Environment(Environment* _parentEnv)
+Environment::Environment(std::shared_ptr<Environment> _parentEnv)
 {
 	m_parentEnvironment = _parentEnv;
 }
 
-void Environment::setParent(Environment* _parentEnv)
+void Environment::setParent(std::shared_ptr<Environment> _parentEnv)
 {
 	m_parentEnvironment = _parentEnv;
 }
 
-const ScmObject* Environment::getSymbol(const ScmObject_Symbol* _symbol) const
+std::shared_ptr<const ScmObject> Environment::getSymbol(const std::shared_ptr<const ScmObject_Symbol> _symbol) const
 {
-	const ScmObject* result = nullptr;
+	std::shared_ptr<const ScmObject> result = nullptr;
 	const Environment* curEnv = this;
 
 	while (result == nullptr && curEnv != nullptr)
@@ -22,7 +21,7 @@ const ScmObject* Environment::getSymbol(const ScmObject_Symbol* _symbol) const
 
 		if (it == curEnv->m_environmentMap.end())
 		{
-			curEnv = curEnv->m_parentEnvironment;
+			curEnv = &*curEnv->m_parentEnvironment;
 		}
 		else
 		{
@@ -33,7 +32,30 @@ const ScmObject* Environment::getSymbol(const ScmObject_Symbol* _symbol) const
 	return result;
 }
 
-void Environment::addSymbol(const ScmObject_Symbol* _symbol, const ScmObject* _object)
+void Environment::addSymbol(const std::shared_ptr<const ScmObject_Symbol> _symbol, std::shared_ptr<const ScmObject> _object)
 {
 	m_environmentMap[*_symbol->getName()] = _object;
+}
+
+bool Environment::setSymbol(const std::shared_ptr<const ScmObject_Symbol> _symbol, std::shared_ptr<const ScmObject> _object)
+{
+	bool found = false;
+	Environment* curEnv = this;
+
+	while (found == false && curEnv != nullptr)
+	{
+		auto it = curEnv->m_environmentMap.find(*_symbol->getName());
+
+		if (it == curEnv->m_environmentMap.end())
+		{
+			curEnv = &*curEnv->m_parentEnvironment;
+		}
+		else
+		{
+			curEnv->m_environmentMap[*_symbol->getName()] = _object;
+			found = true;
+		}
+	}
+
+	return found;
 }

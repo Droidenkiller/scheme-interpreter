@@ -22,12 +22,17 @@ bool ScmObject_Bool::equals(const ScmObject* _other) const
 	}
 }
 
-ScmObject* ScmObject_Bool::copy() const
+std::shared_ptr<const ScmObject> ScmObject_Bool::copy() const
 {
-	return new ScmObject_Bool(*this);
+	return std::make_shared<const ScmObject_Bool>(*this);
 }
 
 const std::string ScmObject_Bool::getOutputString() const
 {
 	return m_value ? "#t" : "#f";
+}
+
+const std::string ScmObject_Bool::getDisplayString() const
+{
+	return getOutputString();
 }

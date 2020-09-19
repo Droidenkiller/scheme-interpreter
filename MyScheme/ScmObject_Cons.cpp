@@ -1,50 +1,85 @@
 #include "ScmObject_Cons.h"
 
-ScmObject_Cons::ScmObject_Cons() : ScmObject(ScmObjectType::CONS)
+ScmObject_Cons::ScmObject_Cons(std::shared_ptr<const ScmObject> _car, std::shared_ptr<const ScmObject> _cdr) : ScmObject(ScmObjectType::CONS)
 {
-	setCar(nullptr);
-	setCdr(nullptr);
+	m_car = _car;
+	m_cdr = _cdr;
 }
 
-const ScmObject* ScmObject_Cons::getCar() const
+std::shared_ptr<const ScmObject> ScmObject_Cons::car() const
 {
-	return car;
+	return m_car;
 }
 
-const ScmObject* ScmObject_Cons::getCdr() const
+std::shared_ptr<const ScmObject> ScmObject_Cons::cdr() const
 {
-	return cdr;
-}
-
-void ScmObject_Cons::setCar(ScmObject* _car)
-{
-	car = _car;
-}
-
-void ScmObject_Cons::setCdr(ScmObject* _cdr)
-{
-	cdr = _cdr;
+	return m_cdr;
 }
 
 bool ScmObject_Cons::equals(const ScmObject* _other) const
 {
-	// TODO: Implement this.
-	throw new std::exception("Not yet implemented.");
+	return this == &*_other;
 }
 
-ScmObject* ScmObject_Cons::copy() const
+std::shared_ptr<const ScmObject> ScmObject_Cons::copy() const
 {
-	return new ScmObject_Cons(*this);
+	// Deep copy not required, as the returned instance is const anyways and therefore cannot be changed.
+	return std::make_shared<const ScmObject_Cons>(*this);
 }
 
 const std::string ScmObject_Cons::getOutputString() const
 {
-	if (cdr != nullptr)
+	if (m_car == nullptr)
 	{
-		return "(" + car->getOutputString() + ", " + cdr->getOutputString() + ")";
+		return "()";
 	}
 	else
 	{
-		return "(" + car->getOutputString() + ")";
+		if (m_cdr != nullptr)
+		{
+			if (m_cdr->getType() == ScmObjectType::CONS)
+			{
+				return "(" + m_car->getOutputString() + " " + std::static_pointer_cast<const ScmObject_Cons>(m_cdr)->getOutputStringInternal() + ")";
+			}
+			else
+			{
+				return "(" + m_car->getOutputString() + " . " + m_cdr->getOutputString() + ")";
+			}
+		}
+		else
+		{
+			return "(" + m_car->getOutputString() + ")";
+		}
 	}
+}
+
+const std::string ScmObject_Cons::getOutputStringInternal() const
+{
+	if (m_car == nullptr)
+	{
+		return "()";
+	}
+	else
+	{
+		if (m_cdr != nullptr)
+		{
+			if (m_cdr->getType() == ScmObjectType::CONS)
+			{
+				return m_car->getOutputString() + " " + std::static_pointer_cast<const ScmObject_Cons>(m_cdr)->getOutputStringInternal();
+			}
+			else
+			{
+				return m_car->getOutputString() + " . " + m_cdr->getOutputString();
+			}
+		}
+		else
+		{
+			return m_car->getOutputString();
+		}
+	}
+}
+
+const std::string ScmObject_Cons::getDisplayString() const
+{
+	return getOutputString();
 }

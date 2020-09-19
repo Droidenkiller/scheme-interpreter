@@ -1,6 +1,8 @@
 #pragma once
 #include "ScmObject.h"
 #include <string>
+#include <memory>
+
 class ScmObject_InternalError :
     public ScmObject
 {
@@ -14,8 +16,10 @@ public:
 
     bool equals(const ScmObject* _other) const;
 
-    ScmObject* copy() const;
+    std::shared_ptr<const ScmObject> copy() const;
 
     std::string const getOutputString() const;
+
+	const std::string getDisplayString() const;
 };
 
