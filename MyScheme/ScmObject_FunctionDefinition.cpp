@@ -47,6 +47,14 @@ ScmObject_FunctionDefinition::FunctionType ScmObject_FunctionDefinition::getFunc
 
 std::vector<std::shared_ptr<ScmObject>> ScmObject_FunctionDefinition::getExecutable(const std::vector<std::shared_ptr<ScmObject>>& _args) const
 {
+	if (m_innerFunctions[m_innerFunctions.size() - 1]->getType() == ScmObjectType::FUNCTION_CALL)
+	{
+		if (std::static_pointer_cast<ScmObject_FunctionCall>(m_innerFunctions[m_innerFunctions.size() - 1])->getFunctionSymbol()->getName()->compare("define") == 0)
+		{
+			return std::vector<std::shared_ptr<ScmObject>>{std::make_shared<ScmObject_InternalError>("Last function call of user defined function was a call to 'define'. This is invalid. Problematic function was: " + getOutputString())};
+		}
+	}
+
 	if (_args.size() != m_params.size() && !m_infiniteParams)
 	{
 		return std::vector<std::shared_ptr<ScmObject>>{std::make_shared<ScmObject_InternalError>("Argument count did not match parameter count. Expected " + std::to_string(m_params.size()) + " got " + std::to_string(_args.size()) + ".")};

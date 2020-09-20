@@ -72,11 +72,11 @@
     <ClCompile Include="ScmObject_FunctionExecution.cpp">
       <Filter>Quelldateien\ScmObjects</Filter>
     </ClCompile>
-    <ClCompile Include="ScmObject_QuoteSymbol.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="Utils.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ScmObject_QuoteSymbol.cpp">
+      <Filter>Quelldateien\ScmObjects</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -131,11 +131,11 @@
     <ClInclude Include="ScmObject_FunctionExecution.h">
       <Filter>Headerdateien\ScmObjects</Filter>
     </ClInclude>
-    <ClInclude Include="ScmObject_QuoteSymbol.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="Utils.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ScmObject_QuoteSymbol.h">
+      <Filter>Headerdateien\ScmObjects</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
