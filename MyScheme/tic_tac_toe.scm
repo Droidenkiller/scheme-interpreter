@@ -163,7 +163,7 @@
 		(cons row col)
 	;else
 		(begin
-			(display "Field is already taken. Please choose a different field.")
+			(display "Field is already taken. Please choose a different field.\n")
 			(get-input)
 		)
 	)
@@ -211,18 +211,62 @@
 	)
 )
 
+(define (is-board-full)
+	(if (> field00 0)
+		(if (> field01 0)
+			(if (> field02 0)
+				(if (> field10 0)
+					(if (> field11 0)
+						(if (> field12 0)
+							(if (> field20 0)
+								(if (> field21 0)
+									(if (> field22 0)
+										#t
+									;else
+										#f
+									)
+								;else
+									#f
+								)
+							;else
+								#f
+							)
+						;else
+							#f
+						)
+					;else
+						#f
+					)
+				;else
+					#f
+				)
+			;else
+				#f
+			)
+		;else
+			#f
+		)
+	;else
+		#f
+	)
+)
+
 (define (main player)
 	(make-next-move player)
 	(print-board)
 	(define winState (check-win-state))
 	(if (> winState 0)
 		(if (eq? winState 1)
-			(print "Player 1 won.")
+			(display "Player 1 won.\n")
 		;else
-			(print "Player 2 won.")
+			(display "Player 2 won.\n")
 		)
 	;else
-		(main (if (eq? player 1) 2 1)) ; Call main recursively until a player has won.
+		(if (eq? (is-board-full) #f)
+			(main (if (eq? player 1) 2 1)) ; Call main recursively until a player has won.
+		;else
+			(display "Draw. Thanks for playing...\n")
+		)
 	)
 )
 
@@ -260,7 +304,28 @@
 							;else
 								(begin
 									(set! winner (check-row-win field02 field11 field20))
-									winner
+									(if (> winner 0)
+										winner
+									;else
+										(begin
+											(set! winner (check-row-win field00 field10 field20))
+											(if (> winner 0)
+												winner
+											;else
+												(begin
+													(set! winner (check-row-win field01 field11 field21))
+													(if (> winner 0)
+														winner
+													;else
+														(begin
+															(set! winner (check-row-win field02 field12 field22))
+															winner
+														)
+													)
+												)
+											)
+										)
+									)
 								)
 							)
 						)
@@ -272,6 +337,6 @@
 )
 
 (display "Started tic tac toe...\n")
-(display "Note: Row and column indexes start at 1.\n")
+(display "Note: Row and column indexes start at 1 and from the top left.\n")
 (print-board)
 (main 1)
