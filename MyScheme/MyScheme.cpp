@@ -44,6 +44,7 @@ void initGlobalEnv()
 	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("read-line"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::BUILT_IN_READ_LINE>());
 	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("load"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::BUILT_IN_LOAD>());
 	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("quote"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::SYNTAX_QUOTE>());
+	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("lambda"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::SYNTAX_LAMBDA>());
 	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("define"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::SYNTAX_DEFINE>());
 	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("if"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::SYNTAX_IF>());
 	globalEnvironment->addSymbol(make_shared<ScmObject_Symbol>("set!"), ScmObject_FunctionDefinition::getFunctionDefinition<ScmObject_FunctionDefinition::FunctionType::SYNTAX_SET>());
@@ -70,7 +71,7 @@ int main()
 
 	std::shared_ptr<ScmObject> obj = Reader::ReadNextSymbol(currentInput);
 
-	exec(static_pointer_cast<ScmObject_FunctionCall>(obj)->createFunctionExecution(globalEnvironment, nullptr));
+	exec(static_pointer_cast<ScmObject_FunctionCall>(obj)->createFunctionExecution(nullptr, nullptr));
 #endif
 
 	bool needsMoreData = false;
@@ -94,7 +95,7 @@ int main()
 				}
 				else if (object->getType() == ScmObjectType::FUNCTION_CALL)
 				{
-					object = exec(static_pointer_cast<const ScmObject_FunctionCall>(object)->createFunctionExecution(globalEnvironment, nullptr));
+					object = exec(static_pointer_cast<const ScmObject_FunctionCall>(object)->createFunctionExecution(nullptr, nullptr));
 					if (object != nullptr)
 						cout << object->getOutputString() << std::endl;
 				}

@@ -47,6 +47,11 @@ void ScmObject_FunctionExecution::removeArgsBefore(int _index, std::shared_ptr<S
 	functionCall->m_functionArgs[0] = _newArg;
 }
 
+void ScmObject_FunctionExecution::removeArgAt(int _index)
+{
+	functionCall->m_functionArgs.erase(functionCall->m_functionArgs.begin());
+}
+
 bool ScmObject_FunctionExecution::equals(const ScmObject* _other) const
 {
 	throw new std::exception("Equals() may never be called on a function execution object (ScmObject_FunctionExecution). This means there is an error in code.");

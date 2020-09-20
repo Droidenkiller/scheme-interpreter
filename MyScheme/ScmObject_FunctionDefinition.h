@@ -35,6 +35,7 @@ public:
 		BUILT_IN_READ_LINE,
 		BUILT_IN_LOAD,
 		SYNTAX_QUOTE,
+		SYNTAX_LAMBDA,
 		SYNTAX_DEFINE,
 		SYNTAX_IF,
 		SYNTAX_SET,
@@ -45,10 +46,9 @@ private:
 	FunctionType m_functionType;
 	bool m_infiniteParams = false;
 	std::vector<std::shared_ptr<ScmObject_Symbol>> m_params;
-	std::shared_ptr<ScmObject_FunctionCall> m_innerFunction;
-	Environment m_functionDefinitionEnvironment;
-	// In case the inner function is a lambda. We have an inner function definition.
-	std::shared_ptr<ScmObject_FunctionDefinition> m_innerFunctionDefinition;
+	std::shared_ptr<Environment> m_functionDefinitionEnvironment;
+	std::vector<std::shared_ptr<ScmObject>> m_innerFunctions;
+
 	static std::unordered_map<FunctionType, std::shared_ptr<ScmObject_FunctionDefinition>> m_builtInFunctions;
 
 public:
@@ -56,9 +56,7 @@ public:
 	ScmObject_FunctionDefinition(FunctionType _functionType);
 
 	// Constructs function definition with parameters.
-	ScmObject_FunctionDefinition(std::vector<std::shared_ptr<ScmObject_Symbol>> _params, std::shared_ptr<ScmObject_FunctionCall> _innerFunction);
-
-	ScmObject_FunctionDefinition(std::vector<std::shared_ptr<ScmObject_Symbol>> _params, std::shared_ptr<ScmObject_FunctionDefinition> _innerFunctionDefinition);
+	ScmObject_FunctionDefinition(std::vector<std::shared_ptr<ScmObject_Symbol>> _params, std::vector<std::shared_ptr<ScmObject>>& _innerFunctions, std::shared_ptr<Environment> _parentEnv, std::shared_ptr<Environment> _closureEnv);
 
 	//// Constructs function definition with an infinite amount of parameters.
 	//ScmObject_FunctionDefinition(ScmObject_FunctionCall* _innerFunction);
@@ -66,7 +64,7 @@ public:
 	FunctionType getFunctionType() const;
 
 	// Executes the function defined by this definition.
-	std::shared_ptr<ScmObject> getExecutable(const std::vector<std::shared_ptr<ScmObject>>& _args, std::shared_ptr<Environment> _parentEnv, std::shared_ptr<Environment> _closureEnv) const;
+	std::vector<std::shared_ptr<ScmObject>> getExecutable(const std::vector<std::shared_ptr<ScmObject>>& _args) const;
 
 	bool equals(const ScmObject* _other) const;
 
@@ -80,7 +78,8 @@ public:
 
 	const std::shared_ptr<ScmObject_Cons> getFunctionArgList() const;
 
-	const std::shared_ptr<ScmObject_Cons> makeCons() const;
+	// This is deprecated and not needed anymore.
+	//const std::shared_ptr<ScmObject_Cons> makeCons() const;
 
 	template<FunctionType T>
 	static std::shared_ptr<ScmObject_FunctionDefinition> getFunctionDefinition()

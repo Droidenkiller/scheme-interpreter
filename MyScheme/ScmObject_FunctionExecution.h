@@ -13,6 +13,7 @@ public:
 	ScmObject_FunctionCall* functionCall;
 	std::shared_ptr<Environment> environment;
 	std::shared_ptr<Environment> closureEnvironment;
+	int currentUdfFunctionIndex = 0;
 
 	ScmObject_FunctionExecution(const ScmObject_FunctionCall* m_functionCall, std::shared_ptr<Environment> _env, std::shared_ptr<Environment> _closureEnv);
 
@@ -31,6 +32,8 @@ public:
 		given in _newArg.
 	*/
 	void removeArgsBefore(int _index, std::shared_ptr<ScmObject> _newArg);
+
+	void removeArgAt(int _index);
 
 	bool equals(const ScmObject* _other) const;
 

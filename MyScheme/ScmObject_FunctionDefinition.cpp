@@ -8,26 +8,28 @@ ScmObject_FunctionDefinition::ScmObject_FunctionDefinition(ScmObject_FunctionDef
 {
 	m_functionType = _functionType;
 	m_infiniteParams = true;
-	m_innerFunction = nullptr;
-	m_innerFunctionDefinition = nullptr;
 }
 
-ScmObject_FunctionDefinition::ScmObject_FunctionDefinition(std::vector<std::shared_ptr<ScmObject_Symbol>> _params, std::shared_ptr<ScmObject_FunctionCall> _innerFunction) : ScmObject(ScmObjectType::FUNCTION_DEFINITION)
+ScmObject_FunctionDefinition::ScmObject_FunctionDefinition(std::vector<std::shared_ptr<ScmObject_Symbol>> _params, std::vector<std::shared_ptr<ScmObject>>& _innerFunctions, std::shared_ptr<Environment> _parentEnv, std::shared_ptr<Environment> _closureEnv) : ScmObject(ScmObjectType::FUNCTION_DEFINITION)
 {
 	m_functionType = ScmObject_FunctionDefinition::FunctionType::CUSTOM;
 
 	m_infiniteParams = false;
 	m_params = _params;
-	m_innerFunction = _innerFunction;
-}
-
-ScmObject_FunctionDefinition::ScmObject_FunctionDefinition(std::vector<std::shared_ptr<ScmObject_Symbol>> _params, std::shared_ptr<ScmObject_FunctionDefinition> _innerFunctionDefinition) : ScmObject(ScmObjectType::FUNCTION_DEFINITION)
-{
-	m_functionType = ScmObject_FunctionDefinition::FunctionType::CUSTOM;
-
-	m_infiniteParams = false;
-	m_params = _params;
-	m_innerFunctionDefinition = _innerFunctionDefinition;
+	m_innerFunctions = _innerFunctions;
+	if (_parentEnv != nullptr)
+	{
+		m_functionDefinitionEnvironment = std::make_shared<Environment>(*_parentEnv);
+	}
+	else
+	{
+		m_functionDefinitionEnvironment = std::make_shared<Environment>();
+	}
+	// Merge parent env with closure env
+	if (_closureEnv != nullptr)
+	{
+		m_functionDefinitionEnvironment->setParent(std::make_shared<Environment>(*_closureEnv));
+	}
 }
 
 //ScmObject_FunctionDefinition::ScmObject_FunctionDefinition(ScmObject_FunctionCall* _innerFunction) : ScmObject(ScmObjectType::FUNCTION_DEFINITION)
@@ -43,45 +45,42 @@ ScmObject_FunctionDefinition::FunctionType ScmObject_FunctionDefinition::getFunc
 	return m_functionType;
 }
 
-std::shared_ptr<ScmObject> ScmObject_FunctionDefinition::getExecutable(const std::vector<std::shared_ptr<ScmObject>>& _args, std::shared_ptr<Environment> _parentEnv, std::shared_ptr<Environment> _closureEnv) const
+std::vector<std::shared_ptr<ScmObject>> ScmObject_FunctionDefinition::getExecutable(const std::vector<std::shared_ptr<ScmObject>>& _args) const
 {
 	if (_args.size() != m_params.size() && !m_infiniteParams)
 	{
-		return std::make_shared<ScmObject_InternalError>("Argument count did not match parameter count. Expected " + std::to_string(m_params.size()) + " got " + std::to_string(_args.size()) + ".");
+		return std::vector<std::shared_ptr<ScmObject>>{std::make_shared<ScmObject_InternalError>("Argument count did not match parameter count. Expected " + std::to_string(m_params.size()) + " got " + std::to_string(_args.size()) + ".")};
 	}
 
-	if (m_innerFunction != nullptr)
+	// Create the new closure environment
+	std::shared_ptr<Environment> argsEnv = std::make_shared<Environment>();
+	auto param = m_params.begin();
+	auto arg = _args.begin();
+	for (; arg != _args.end() && param != m_params.end(); ++arg, ++param)
 	{
-		std::shared_ptr<Environment> env = std::make_shared<Environment>(_parentEnv);
+		argsEnv->addSymbol(*param, *arg);
+	}
 
-		auto param = m_params.begin();
-		auto arg = _args.begin();
-		for (; arg != _args.end() && param != m_params.end(); ++arg, ++param)
+	std::vector<std::shared_ptr<ScmObject>> execs;
+	execs.reserve(m_innerFunctions.size());
+
+	for (auto func : m_innerFunctions)
+	{
+		switch (func->getType())
 		{
-			env->addSymbol(*param, *arg);
+		case ScmObjectType::FUNCTION_CALL:
+			{
+				std::shared_ptr<ScmObject_FunctionCall> call = std::static_pointer_cast<ScmObject_FunctionCall>(func);
+				execs.push_back(call->createFunctionExecution(argsEnv, m_functionDefinitionEnvironment));
+			}
+			break;
+		default:
+			execs.push_back(func);
+			break;
 		}
-
-		return m_innerFunction->createFunctionExecution(env, std::make_shared<Environment>(m_functionDefinitionEnvironment));
 	}
-	else if (m_innerFunctionDefinition != nullptr)
-	{
-		std::shared_ptr<ScmObject_FunctionDefinition> newDef = std::make_shared<ScmObject_FunctionDefinition>(*m_innerFunctionDefinition);
-		newDef->m_functionDefinitionEnvironment = Environment(m_functionDefinitionEnvironment);
-		newDef->m_functionDefinitionEnvironment.setParent(_closureEnv);
 
-		auto param = m_params.begin();
-		auto arg = _args.begin();
-		for (; arg != _args.end() && param != m_params.end(); ++arg, ++param)
-		{
-			newDef->m_functionDefinitionEnvironment.addSymbol(*param, *arg);
-		}
-
-		return newDef;
-	}
-	else
-	{
-		throw new std::exception("Function definition did not have an inner function or function definition. This should never happen and means there is an error in code.");
-	}
+	return execs;
 }
 
 bool ScmObject_FunctionDefinition::equals(const ScmObject* _other) const
@@ -136,8 +135,14 @@ const std::string ScmObject_FunctionDefinition::getOutputString() const
 		return "<Function:function-body>";
 	case FunctionType::BUILT_IN_FUNCTION_ARG_LIST:
 		return "<Function:function-arglist>";
+	case FunctionType::BUILT_IN_READ_LINE:
+		return "<Function:read-line>";
+	case FunctionType::BUILT_IN_LOAD:
+		return "<Function:load>";
 	case FunctionType::SYNTAX_QUOTE:
 		return "<Syntax:quote>";
+	case FunctionType::SYNTAX_LAMBDA:
+		return "<Syntax:lambda>";
 	case FunctionType::SYNTAX_DEFINE:
 		return "<Syntax:define>";
 	case FunctionType::SYNTAX_IF:
@@ -167,16 +172,17 @@ const std::string ScmObject_FunctionDefinition::getOutputString() const
 
 			output += ") (";
 
-			if (m_innerFunction != nullptr)
+			for (auto it = m_innerFunctions.begin(); it != m_innerFunctions.end(); )
 			{
-				output += m_innerFunction->getOutputString();
-			}
-			else
-			{
-				output += m_innerFunctionDefinition->getOutputString();
+				output += (*it)->getOutputString();
+				++it;
+				if (it != m_innerFunctions.end())
+				{
+					output += " ";
+				}
 			}
 
-			output += ")";
+			output += "))";
 
 			return output;
 		}
@@ -193,19 +199,17 @@ const std::shared_ptr<ScmObject_Cons> ScmObject_FunctionDefinition::getFunctionB
 {
 	std::shared_ptr<ScmObject_Cons> result = nullptr;
 
-	if (m_innerFunction != nullptr)
+	for (auto it = m_innerFunctions.rbegin(); it != m_innerFunctions.rend(); ++it)
 	{
-		result = m_innerFunction->makeCons();
+		if ((*it)->getType() == ScmObjectType::FUNCTION_CALL)
+		{
+			result = std::make_shared<ScmObject_Cons>(std::static_pointer_cast<ScmObject_FunctionCall>(*it)->makeCons(), result);
+		}
+		else
+		{
+			result = std::make_shared<ScmObject_Cons>(*it, result);
+		}
 	}
-	else
-	{
-		result = std::make_shared<ScmObject_Cons>(m_innerFunctionDefinition->getFunctionBody(), nullptr);
-		result = std::make_shared<ScmObject_Cons>(m_innerFunctionDefinition->getFunctionArgList(), result);
-		result = std::make_shared<ScmObject_Cons>(std::make_shared<ScmObject_Symbol>("lambda"), result);
-	}
-
-	// Wrap the cons in another cons to make it look like in class.
-	result = std::make_shared<ScmObject_Cons>(result, nullptr);
 
 	return result;
 }
@@ -220,11 +224,12 @@ const std::shared_ptr<ScmObject_Cons> ScmObject_FunctionDefinition::getFunctionA
 	return result;
 }
 
-const std::shared_ptr<ScmObject_Cons> ScmObject_FunctionDefinition::makeCons() const
-{
-	auto result = std::make_shared<ScmObject_Cons>(getFunctionArgList(), nullptr);
-	result = std::make_shared<ScmObject_Cons>(m_innerFunctionDefinition->getFunctionArgList(), result);
-	result = std::make_shared<ScmObject_Cons>(std::make_shared<ScmObject_Symbol>("lambda"), result);
-
-	return result;
-}
+// This is deprecated and not needed anymore.
+//const std::shared_ptr<ScmObject_Cons> ScmObject_FunctionDefinition::makeCons() const
+//{
+//	auto result = std::make_shared<ScmObject_Cons>(getFunctionArgList(), nullptr);
+//	/*result = std::make_shared<ScmObject_Cons>(m_innerFunctionDefinition->getFunctionArgList(), result);
+//	result = std::make_shared<ScmObject_Cons>(std::make_shared<ScmObject_Symbol>("lambda"), result);*/
+//
+//	return result;
+//}

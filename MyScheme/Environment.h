@@ -14,6 +14,8 @@ private:
 public:
 	Environment(std::shared_ptr<Environment> _parentEnv = nullptr);
 
+	Environment(const Environment& _env) = default;
+
 	void setParent(std::shared_ptr<Environment> _parentEnv);
 
 	std::shared_ptr<const ScmObject> getSymbol(const std::shared_ptr<const ScmObject_Symbol> _symbol) const;

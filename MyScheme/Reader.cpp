@@ -180,110 +180,111 @@ void skipWhitespace(string& _remainingInput)
 	return;
 }
 
-shared_ptr<ScmObject> Reader::readLambda(string& _remainingInput)
-{
-	// First read the parameter list.
-	skipWhitespace(_remainingInput);
-
-	if (_remainingInput[0] != '(')
-	{
-		_remainingInput = "";
-		return make_shared<ScmObject_InternalError>("Tried to read parameter list of lambda expression but no parameter list was found.");
-	}
-
-	// Remove '('
-	_remainingInput = _remainingInput.substr(1);
-
-	std::vector<shared_ptr<ScmObject_Symbol>> params{};
-
-	while (_remainingInput.length() > 0 && _remainingInput[0] != ')')
-	{
-		skipWhitespace(_remainingInput);
-
-		// Not enough input.
-		if (_remainingInput.length() == 0)
-		{
-			return nullptr;
-		}
-		// No parameters supplied -> function without parameters.
-		else if (_remainingInput[0] == ')')
-		{
-			break;
-		}
-
-		shared_ptr<ScmObject> param = ReadNextSymbol(_remainingInput);
-
-		switch (param->getType())
-		{
-		case ScmObjectType::SYMBOL:
-			params.push_back(static_pointer_cast<ScmObject_Symbol>(param));
-			break;
-		default:
-			_remainingInput = "";
-			return make_shared<ScmObject_InternalError>("Received non-symbol while reading parameter list of lambda expression. This is invalid.");
-			break;
-		}
-	}
-
-	// Remove ')'
-	skipWhitespace(_remainingInput);
-	if (_remainingInput.length() == 0)
-	{
-		// There is not enough data in this line.
-		return nullptr;
-	}
-	// The current symbol is definitely ')' due to the while loop above.
-	else
-	{
-		_remainingInput = _remainingInput.substr(1);
-	}
-
-	// Then read the function body.
-	skipWhitespace(_remainingInput);
-
-	shared_ptr<ScmObject> innerFunction = readFunctionKeyword(_remainingInput);
-
-	switch (innerFunction->getType())
-	{
-	case ScmObjectType::FUNCTION_CALL:
-	case ScmObjectType::FUNCTION_DEFINITION:
-		break;
-	default:
-		return make_shared<ScmObject_InternalError>("Reading function body failed.");
-		break;
-	}
-
-	skipWhitespace(_remainingInput);
-
-	// The closing paranthesis is missing. We need more input.
-	if (_remainingInput.size() == 0)
-	{
-		return nullptr;
-	}
-	else if (_remainingInput[0] != ')')
-	{
-		return make_shared<ScmObject_InternalError>("Expected ')' at the end of lambda statement. But '" + std::string(1, _remainingInput[0]) + "' was found.");
-	}
-	else
-	{
-		// Remove the closing bracket.
-		_remainingInput = _remainingInput.substr(1);
-
-		// Finally, create the function definition.
-		if (innerFunction->getType() == ScmObjectType::FUNCTION_CALL)
-		{
-			return make_shared<ScmObject_FunctionDefinition>(params, static_pointer_cast<ScmObject_FunctionCall>(innerFunction));
-		}
-		else if (innerFunction->getType() == ScmObjectType::FUNCTION_DEFINITION)
-		{
-			return make_shared<ScmObject_FunctionDefinition>(params, static_pointer_cast<ScmObject_FunctionDefinition>(innerFunction));
-		}
-		else
-		{
-			return make_shared<ScmObject_InternalError>("Expected to get lambda or function in function body, but got neither.");
-		}
-	}
-}
+// Now handled as built in syntax (see: BuiltInFunctionTramp.cpp).
+//shared_ptr<ScmObject> Reader::readLambda(string& _remainingInput)
+//{
+//	// First read the parameter list.
+//	skipWhitespace(_remainingInput);
+//
+//	if (_remainingInput[0] != '(')
+//	{
+//		_remainingInput = "";
+//		return make_shared<ScmObject_InternalError>("Tried to read parameter list of lambda expression but no parameter list was found.");
+//	}
+//
+//	// Remove '('
+//	_remainingInput = _remainingInput.substr(1);
+//
+//	std::vector<shared_ptr<ScmObject_Symbol>> params{};
+//
+//	while (_remainingInput.length() > 0 && _remainingInput[0] != ')')
+//	{
+//		skipWhitespace(_remainingInput);
+//
+//		// Not enough input.
+//		if (_remainingInput.length() == 0)
+//		{
+//			return nullptr;
+//		}
+//		// No parameters supplied -> function without parameters.
+//		else if (_remainingInput[0] == ')')
+//		{
+//			break;
+//		}
+//
+//		shared_ptr<ScmObject> param = ReadNextSymbol(_remainingInput);
+//
+//		switch (param->getType())
+//		{
+//		case ScmObjectType::SYMBOL:
+//			params.push_back(static_pointer_cast<ScmObject_Symbol>(param));
+//			break;
+//		default:
+//			_remainingInput = "";
+//			return make_shared<ScmObject_InternalError>("Received non-symbol while reading parameter list of lambda expression. This is invalid.");
+//			break;
+//		}
+//	}
+//
+//	// Remove ')'
+//	skipWhitespace(_remainingInput);
+//	if (_remainingInput.length() == 0)
+//	{
+//		// There is not enough data in this line.
+//		return nullptr;
+//	}
+//	// The current symbol is definitely ')' due to the while loop above.
+//	else
+//	{
+//		_remainingInput = _remainingInput.substr(1);
+//	}
+//
+//	// Then read the function body.
+//	skipWhitespace(_remainingInput);
+//
+//	shared_ptr<ScmObject> innerFunction = readFunctionKeyword(_remainingInput);
+//
+//	switch (innerFunction->getType())
+//	{
+//	case ScmObjectType::FUNCTION_CALL:
+//	case ScmObjectType::FUNCTION_DEFINITION:
+//		break;
+//	default:
+//		return make_shared<ScmObject_InternalError>("Reading function body failed.");
+//		break;
+//	}
+//
+//	skipWhitespace(_remainingInput);
+//
+//	// The closing paranthesis is missing. We need more input.
+//	if (_remainingInput.size() == 0)
+//	{
+//		return nullptr;
+//	}
+//	else if (_remainingInput[0] != ')')
+//	{
+//		return make_shared<ScmObject_InternalError>("Expected ')' at the end of lambda statement. But '" + std::string(1, _remainingInput[0]) + "' was found.");
+//	}
+//	else
+//	{
+//		// Remove the closing bracket.
+//		_remainingInput = _remainingInput.substr(1);
+//
+//		// Finally, create the function definition.
+//		if (innerFunction->getType() == ScmObjectType::FUNCTION_CALL)
+//		{
+//			return make_shared<ScmObject_FunctionDefinition>(params, static_pointer_cast<ScmObject_FunctionCall>(innerFunction));
+//		}
+//		else if (innerFunction->getType() == ScmObjectType::FUNCTION_DEFINITION)
+//		{
+//			return make_shared<ScmObject_FunctionDefinition>(params, static_pointer_cast<ScmObject_FunctionDefinition>(innerFunction));
+//		}
+//		else
+//		{
+//			return make_shared<ScmObject_InternalError>("Expected to get lambda or function in function body, but got neither.");
+//		}
+//	}
+//}
 
 shared_ptr<ScmObject> Reader::readFunctionKeyword(string& _remainingInput)
 {

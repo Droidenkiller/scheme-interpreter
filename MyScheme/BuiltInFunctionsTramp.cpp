@@ -30,6 +30,10 @@ shared_ptr<const ScmObject> lookupInEnv(std::shared_ptr<const ScmObject_Function
 	{
 		boundSymbol = _exec->environment->getSymbol(_symbol);
 	}
+	if (boundSymbol == nullptr)
+	{
+		boundSymbol = globalEnvironment->getSymbol(_symbol);
+	}
 
 	return boundSymbol;
 }
@@ -81,6 +85,42 @@ inline void execBuiltInAdd(std::stack<std::shared_ptr<ScmObject_FunctionExecutio
 		switch (arg->getType())
 		{
 		case ScmObjectType::FLOAT:
+		{
+			if (!useFloatSum)
+			{
+				useFloatSum = true;
+				floatSum = intSum;
+			}
+
+			floatSum += static_pointer_cast<ScmObject_Float>(arg)->getValue();
+		}
+		break;
+		case ScmObjectType::INT:
+		{
+			long long val = static_pointer_cast<ScmObject_Integer>(arg)->getValue();
+
+			if (useFloatSum)
+			{
+				floatSum += val;
+			}
+			else
+			{
+				intSum += val;
+			}
+		}
+		break;
+		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>(arg));
+
+			if (obj == nullptr)
+			{
+				return returnError(_callStack, _result, "Error while trying to execute built-in add. Symbol " + *static_pointer_cast<ScmObject_Symbol>(arg)->getName() + " is not defined.");
+			}
+
+			switch (obj->getType())
+			{
+			case ScmObjectType::FLOAT:
 			{
 				if (!useFloatSum)
 				{
@@ -88,12 +128,12 @@ inline void execBuiltInAdd(std::stack<std::shared_ptr<ScmObject_FunctionExecutio
 					floatSum = intSum;
 				}
 
-				floatSum += static_pointer_cast<ScmObject_Float>(arg)->getValue();
+				floatSum += static_pointer_cast<const ScmObject_Float>(obj)->getValue();
 			}
 			break;
-		case ScmObjectType::INT:
+			case ScmObjectType::INT:
 			{
-				long long val = static_pointer_cast<ScmObject_Integer>(arg)->getValue();
+				long long val = static_pointer_cast<const ScmObject_Integer>(obj)->getValue();
 
 				if (useFloatSum)
 				{
@@ -105,55 +145,19 @@ inline void execBuiltInAdd(std::stack<std::shared_ptr<ScmObject_FunctionExecutio
 				}
 			}
 			break;
-		case ScmObjectType::SYMBOL:
-			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>(arg));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute built-in add. Symbol " + *static_pointer_cast<ScmObject_Symbol>(arg)->getName() + " is not defined.");
-				}
-
-				switch (obj->getType())
-				{
-				case ScmObjectType::FLOAT:
-					{
-						if (!useFloatSum)
-						{
-							useFloatSum = true;
-							floatSum = intSum;
-						}
-
-						floatSum += static_pointer_cast<const ScmObject_Float>(obj)->getValue();
-					}
-					break;
-				case ScmObjectType::INT:
-					{
-						long long val = static_pointer_cast<const ScmObject_Integer>(obj)->getValue();
-
-						if (useFloatSum)
-						{
-							floatSum += val;
-						}
-						else
-						{
-							intSum += val;
-						}
-					}
-					break;
-				default:
-					return returnError(_callStack, _result, "Error while trying to execute built-in add.");
-				}
+			default:
+				return returnError(_callStack, _result, "Error while trying to execute built-in add.");
 			}
-			break;
+		}
+		break;
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(arg);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgs(argIndex, useFloatSum ? make_shared<ScmObject_Float>(floatSum) : static_pointer_cast<ScmObject>(make_shared<ScmObject_Integer>(intSum)));
-				return;
-			}
-			break;
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(arg);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgs(argIndex, useFloatSum ? make_shared<ScmObject_Float>(floatSum) : static_pointer_cast<ScmObject>(make_shared<ScmObject_Integer>(intSum)));
+			return;
+		}
+		break;
 		default:
 			return returnError(_callStack, _result, "Error while trying to execute built-in add.");
 		}
@@ -195,32 +199,32 @@ inline void execBuiltInSubtract(std::stack<std::shared_ptr<ScmObject_FunctionExe
 		case ScmObjectType::INT:
 			return endExecution(_callStack, _result, make_shared<ScmObject_Integer>(-static_pointer_cast<ScmObject_Integer>(curArg)->getValue()));
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>(curArg));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>(curArg));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute built-in subtract. Symbol " + *static_pointer_cast<ScmObject_Symbol>(curArg)->getName() + " is not defined.");
-				}
-
-				switch (obj->getType())
-				{
-				case ScmObjectType::FLOAT:
-					return endExecution(_callStack, _result, make_shared<ScmObject_Float>(-static_pointer_cast<const ScmObject_Float>(obj)->getValue()));
-				case ScmObjectType::INT:
-					return endExecution(_callStack, _result, make_shared<ScmObject_Integer>(-static_pointer_cast<const ScmObject_Integer>(obj)->getValue()));
-				default:
-					return returnError(_callStack, _result, "Error while trying to execute built-in subtract. Wrong argument type.");
-				}
+				return returnError(_callStack, _result, "Error while trying to execute built-in subtract. Symbol " + *static_pointer_cast<ScmObject_Symbol>(curArg)->getName() + " is not defined.");
 			}
-			break;
+
+			switch (obj->getType())
+			{
+			case ScmObjectType::FLOAT:
+				return endExecution(_callStack, _result, make_shared<ScmObject_Float>(-static_pointer_cast<const ScmObject_Float>(obj)->getValue()));
+			case ScmObjectType::INT:
+				return endExecution(_callStack, _result, make_shared<ScmObject_Integer>(-static_pointer_cast<const ScmObject_Integer>(obj)->getValue()));
+			default:
+				return returnError(_callStack, _result, "Error while trying to execute built-in subtract. Wrong argument type.");
+			}
+		}
+		break;
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(curArg);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(0, nullptr);
-				return;
-			}
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(curArg);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(0, nullptr);
+			return;
+		}
 		default:
 			return returnError(_callStack, _result, "Error while trying to execute built-in subtract. Wrong argument type.");
 		}
@@ -703,13 +707,13 @@ inline void execBuiltInCons(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 		}
 		break;
 		default:
-			{
-				if (curArgIndex == 0)
-					car = curArg;
-				else
-					cdr = curArg;
-			}
-			break;
+		{
+			if (curArgIndex == 0)
+				car = curArg;
+			else
+				cdr = curArg;
+		}
+		break;
 		}
 
 		++curArgIndex;
@@ -742,25 +746,25 @@ inline void execBuiltInCar(std::stack<std::shared_ptr<ScmObject_FunctionExecutio
 	switch (curArg->getType())
 	{
 	case ScmObjectType::SYMBOL:
+	{
+		shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>(curArg));
+
+		if (obj == nullptr)
 		{
-			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>(curArg));
-
-			if (obj == nullptr)
-			{
-				return returnError(_callStack, _result, "Error while trying to execute built-in car. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-			}
-
-			curArg = obj;
+			return returnError(_callStack, _result, "Error while trying to execute built-in car. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 		}
-		break;
+
+		curArg = obj;
+	}
+	break;
 	case ScmObjectType::FUNCTION_CALL:
-		{
-			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(curArg);
-			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-			currentExec->replaceArgAt(0, nullptr);
-			return;
-		}
-		break;
+	{
+		shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(curArg);
+		_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+		currentExec->replaceArgAt(0, nullptr);
+		return;
+	}
+	break;
 	default:
 		break;
 	}
@@ -854,25 +858,25 @@ inline void execBuiltInEquals(std::stack<std::shared_ptr<ScmObject_FunctionExecu
 		switch ((*args)[0]->getType())
 		{
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute built-in equals. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				firstArg = obj;
+				return returnError(_callStack, _result, "Error while trying to execute built-in equals. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 			}
-			break;
+
+			firstArg = obj;
+		}
+		break;
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(0, nullptr);
-				return;
-			}
-			break;
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(0, nullptr);
+			return;
+		}
+		break;
 		default:
 			firstArg = (*args)[0];
 			break;
@@ -974,17 +978,17 @@ inline void execBuiltInGreaterThan(std::stack<std::shared_ptr<ScmObject_Function
 	switch (firstArg->getType())
 	{
 	case ScmObjectType::INT:
-		{
-			firstArgVal.intVal = static_pointer_cast<const ScmObject_Integer>(firstArg)->getValue();
-			useFloatVal = false;
-		}
-		break;
-	case ScmObjectType::FLOAT:
-		{
-			firstArgVal.floatVal = static_pointer_cast<const ScmObject_Float>(firstArg)->getValue();
-			useFloatVal = true;
+	{
+		firstArgVal.intVal = static_pointer_cast<const ScmObject_Integer>(firstArg)->getValue();
+		useFloatVal = false;
 	}
-		break;
+	break;
+	case ScmObjectType::FLOAT:
+	{
+		firstArgVal.floatVal = static_pointer_cast<const ScmObject_Float>(firstArg)->getValue();
+		useFloatVal = true;
+	}
+	break;
 	default:
 		return returnError(_callStack, _result, "Greater than (>) only supports types float and integer. Please check the type of the first argument.");
 	}
@@ -1028,33 +1032,33 @@ inline void execBuiltInGreaterThan(std::stack<std::shared_ptr<ScmObject_Function
 	switch (secondArg->getType())
 	{
 	case ScmObjectType::INT:
-		{
-			long long val = static_pointer_cast<const ScmObject_Integer>(secondArg)->getValue();
+	{
+		long long val = static_pointer_cast<const ScmObject_Integer>(secondArg)->getValue();
 
-			if (useFloatVal)
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal > val));
-			}
-			else
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal > val));
-			}
+		if (useFloatVal)
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal > val));
 		}
-		break;
+		else
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal > val));
+		}
+	}
+	break;
 	case ScmObjectType::FLOAT:
-		{
-			double val = static_pointer_cast<const ScmObject_Float>(secondArg)->getValue();
+	{
+		double val = static_pointer_cast<const ScmObject_Float>(secondArg)->getValue();
 
-			if (useFloatVal)
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal > val));
-			}
-			else
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal > val));
-			}
+		if (useFloatVal)
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal > val));
 		}
-		break;
+		else
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal > val));
+		}
+	}
+	break;
 	default:
 		return returnError(_callStack, _result, "Greater than (>) only supports types float and integer. Please check the type of the second argument.");
 	}
@@ -1170,33 +1174,33 @@ inline void execBuiltInLessThan(std::stack<std::shared_ptr<ScmObject_FunctionExe
 	switch (secondArg->getType())
 	{
 	case ScmObjectType::INT:
-		{
-			long long val = static_pointer_cast<const ScmObject_Integer>(secondArg)->getValue();
+	{
+		long long val = static_pointer_cast<const ScmObject_Integer>(secondArg)->getValue();
 
-			if (useFloatVal)
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal < val));
-			}
-			else
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal < val));
-			}
+		if (useFloatVal)
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal < val));
 		}
-		break;
+		else
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal < val));
+		}
+	}
+	break;
 	case ScmObjectType::FLOAT:
-		{
-			double val = static_pointer_cast<const ScmObject_Float>(secondArg)->getValue();
+	{
+		double val = static_pointer_cast<const ScmObject_Float>(secondArg)->getValue();
 
-			if (useFloatVal)
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal < val));
-			}
-			else
-			{
-				return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal < val));
-			}
+		if (useFloatVal)
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.floatVal < val));
 		}
-		break;
+		else
+		{
+			return endExecution(_callStack, _result, make_shared<ScmObject_Bool>(firstArgVal.intVal < val));
+		}
+	}
+	break;
 	default:
 		return returnError(_callStack, _result, "Less than (<) only supports types float and integer. Please check the type of the second argument.");
 	}
@@ -1224,24 +1228,24 @@ inline void execBuiltInStringQ(std::stack<std::shared_ptr<ScmObject_FunctionExec
 		switch ((*args)[0]->getType())
 		{
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute built-in 'string?'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				arg = obj;
+				return returnError(_callStack, _result, "Error while trying to execute built-in 'string?'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 			}
-			break;
+
+			arg = obj;
+		}
+		break;
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(0, nullptr);
-				return;
-			}
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(0, nullptr);
+			return;
+		}
 		default:
 			arg = (*args)[0];
 		}
@@ -1496,25 +1500,25 @@ inline void execBuiltInPrint(std::stack<std::shared_ptr<ScmObject_FunctionExecut
 		switch (curArg->getType())
 		{
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(curArg);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->removeArgsBefore(curArgIndex, nullptr);
-				return;
-			}
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>(curArg);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->removeArgsBefore(curArgIndex, nullptr);
+			return;
+		}
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>(curArg));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>(curArg));
-
-				if (obj == nullptr)
-				{
-					cout << endl;
-					return returnError(_callStack, _result, "Error while trying to execute built-in 'print'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				cout << obj->getOutputString();
+				cout << endl;
+				return returnError(_callStack, _result, "Error while trying to execute built-in 'print'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 			}
-			break;
+
+			cout << obj->getOutputString();
+		}
+		break;
 		default:
 			cout << curArg->getOutputString();
 			break;
@@ -1660,24 +1664,24 @@ inline void execBuiltInFunctionArgList(std::stack<std::shared_ptr<ScmObject_Func
 		switch ((*args)[0]->getType())
 		{
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(0, nullptr);
-				return;
-			}
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(0, nullptr);
+			return;
+		}
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute built-in 'function-arglist'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				arg = obj;
+				return returnError(_callStack, _result, "Error while trying to execute built-in 'function-arglist'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 			}
-			break;
+
+			arg = obj;
+		}
+		break;
 		default:
 			arg = (*args)[0];
 			break;
@@ -1733,34 +1737,34 @@ inline void execBuiltInLoad(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 		switch ((*args)[0]->getType())
 		{
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>((*args)[0]));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute built-in 'load'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				path = obj;
+				return returnError(_callStack, _result, "Error while trying to execute built-in 'load'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 			}
+
+			path = obj;
+		}
 		break;
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(0, nullptr);
-				return;
-			}
-			break;
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(0, nullptr);
+			return;
+		}
+		break;
 		case ScmObjectType::STRING:
-			{
-				path = (*args)[0];
-			}
-			break;
+		{
+			path = (*args)[0];
+		}
+		break;
 		default:
 			return returnError(_callStack, _result, "Error while trying to execute built-in 'load'. Wrong argument type. Load requires one argument of type string.");
 		}
-		
+
 		if (path->getType() != ScmObjectType::STRING)
 		{
 			return returnError(_callStack, _result, "Error while trying to execute built-in 'load'. Wrong argument type. Load requires one argument of type string.");
@@ -1820,15 +1824,15 @@ inline void execBuiltInLoad(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 			switch (readObj->getType())
 			{
 			case ScmObjectType::FUNCTION_CALL:
-				{
-					execTramp(static_pointer_cast<const ScmObject_FunctionCall>(readObj)->createFunctionExecution(globalEnvironment, nullptr));
-				}
-				break;
+			{
+				execTramp(static_pointer_cast<const ScmObject_FunctionCall>(readObj)->createFunctionExecution(nullptr, nullptr));
+			}
+			break;
 			case ScmObjectType::INTERNAL_ERROR:
-				{
-					return returnError(_callStack, _result, "Error in line " + to_string(curLineNumber) + ".");
-				}
-				break;
+			{
+				return returnError(_callStack, _result, "Error in line " + to_string(curLineNumber) + ".");
+			}
+			break;
 			default:
 				break;
 			}
@@ -1854,10 +1858,51 @@ inline void execSyntaxQuote(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 	case ScmObjectType::FUNCTION_CALL:
 		return endExecution(_callStack, _result, static_pointer_cast<ScmObject_FunctionCall>((*args)[0])->makeCons());
 	case ScmObjectType::FUNCTION_DEFINITION:
-		return endExecution(_callStack, _result, static_pointer_cast<ScmObject_FunctionDefinition>((*args)[0])->makeCons());
+		throw new exception("Received function definition in 'quote'. This is deprecated and should not happen anymore.");
+		//return endExecution(_callStack, _result, static_pointer_cast<ScmObject_FunctionDefinition>((*args)[0])->makeCons());
 	default:
 		return endExecution(_callStack, _result, std::make_shared<ScmObject_QuoteSymbol>(static_pointer_cast<ScmObject_Symbol>((*args)[0])->getOutputString()));
 	}
+}
+
+inline void execSyntaxLambda(std::stack<std::shared_ptr<ScmObject_FunctionExecution>>& _callStack, shared_ptr<ScmObject>& _result)
+{
+	std::shared_ptr<ScmObject_FunctionExecution> currentExec = _callStack.top();
+
+	const std::vector<shared_ptr<ScmObject>>* args = currentExec->getFunctionArgs();
+
+	if (args->size() < 2)
+	{
+		return returnError(_callStack, _result, "Wrong number of arguments when calling 'lambda'. 'lambda' expects at least two arguments (parameter list, instructions).");
+	}
+
+	if ((*args)[0]->getType() != ScmObjectType::FUNCTION_CALL)
+	{
+		return returnError(_callStack, _result, "Call to 'lambda' expected argument list but got data of different type. Please supply the argument list first.");
+	}
+
+	std::shared_ptr<ScmObject_FunctionCall> functionCallParamterObj = static_pointer_cast<ScmObject_FunctionCall>((*args)[0]);
+	const std::vector<shared_ptr<ScmObject>>* functionArgs = functionCallParamterObj->getFunctionArgs();
+	std::vector<shared_ptr<ScmObject_Symbol>> parameterList;
+	parameterList.reserve(functionArgs->size() + 1);
+
+	parameterList.push_back(const_pointer_cast<ScmObject_Symbol>(functionCallParamterObj->getFunctionSymbol()));
+
+	for (auto it : *functionArgs)
+	{
+		if (it->getType() != ScmObjectType::SYMBOL)
+		{
+			return returnError(_callStack, _result, "Expected only symbols in paramter list of lambda expression but got different type.");
+		}
+		else
+		{
+			parameterList.push_back(static_pointer_cast<ScmObject_Symbol>(it));
+		}
+	}
+
+	std::vector<shared_ptr<ScmObject>> functionCalls(args->begin() + 1, args->end());
+
+	return endExecution(_callStack, _result, make_shared<ScmObject_FunctionDefinition>(parameterList, functionCalls, currentExec->environment, currentExec->closureEnvironment));
 }
 
 inline void execSyntaxDefine(std::stack<std::shared_ptr<ScmObject_FunctionExecution>>& _callStack, shared_ptr<ScmObject>& _result)
@@ -1866,12 +1911,12 @@ inline void execSyntaxDefine(std::stack<std::shared_ptr<ScmObject_FunctionExecut
 
 	const std::vector<shared_ptr<ScmObject>>* args = currentExec->getFunctionArgs();
 
-	if (args->size() != 2)
+	if (args->size() < 2)
 	{
-		return returnError(_callStack, _result, "The amount of arguments supplied to define was not equal to two. Define only accepts exactly two arguments.");
+		return returnError(_callStack, _result, "The amount of arguments supplied to define was less than two. Define only accepts two or more (in case of function definitions (lambda-shorthand)) arguments.");
 	}
 
-	shared_ptr<ScmObject> symbolValue = nullptr;
+	shared_ptr<const ScmObject> symbolValue = nullptr;
 
 	if ((*args)[1] == nullptr)
 	{
@@ -1909,50 +1954,68 @@ inline void execSyntaxDefine(std::stack<std::shared_ptr<ScmObject_FunctionExecut
 	switch ((*args)[0]->getType())
 	{
 	case ScmObjectType::SYMBOL:
+	{
+		// If the symbol value is itself a symbol, we first have to get the actual value.
+		if (symbolValue->getType() == ScmObjectType::SYMBOL)
 		{
-			symbolToDefine = static_pointer_cast<ScmObject_Symbol>((*args)[0]);
+			symbolValue = lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>(symbolValue));
 		}
-		break;
+
+		symbolToDefine = static_pointer_cast<ScmObject_Symbol>((*args)[0]);
+	}
+	break;
 	// Lambda shorthand.
 	case ScmObjectType::FUNCTION_CALL:
+	{
+		auto funcCall = static_pointer_cast<ScmObject_FunctionCall>((*args)[0]);
+
+		symbolToDefine = funcCall->getFunctionSymbol();
+		auto args = funcCall->getFunctionArgs();
+		std::vector<std::shared_ptr<ScmObject_Symbol>> unconstArgs;
+		unconstArgs.reserve(args->size());
+
+		for (auto arg : *args)
 		{
-			auto funcCall = static_pointer_cast<ScmObject_FunctionCall>((*args)[0]);
-		
-			symbolToDefine = funcCall->getFunctionSymbol();
-			auto args = funcCall->getFunctionArgs();
-			std::vector<std::shared_ptr<ScmObject_Symbol>> unconstArgs;
-			unconstArgs.reserve(args->size());
-
-			for (auto arg : *args)
+			if (arg->getType() != ScmObjectType::SYMBOL)
 			{
-				if (arg->getType() != ScmObjectType::SYMBOL)
-				{
-					return returnError(_callStack, _result, "Parameter of short-hand lambda was not a symbol.");
-				}
-				else
-				{
-					unconstArgs.push_back(const_pointer_cast<ScmObject_Symbol>(static_pointer_cast<const ScmObject_Symbol>(arg)));
-				}
+				return returnError(_callStack, _result, "Parameter of short-hand lambda was not a symbol.");
 			}
-
-			switch (symbolValue->getType())
+			else
 			{
-			case ScmObjectType::FUNCTION_CALL:
-				symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, static_pointer_cast<ScmObject_FunctionCall>(symbolValue));
-				break;
-			case ScmObjectType::FUNCTION_DEFINITION:
-				symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, static_pointer_cast<ScmObject_FunctionDefinition>(symbolValue));
-				break;
-			default:
-				return returnError(_callStack, _result, "Defining lambda failed. Function body was not a function or lambda.");
+				unconstArgs.push_back(const_pointer_cast<ScmObject_Symbol>(static_pointer_cast<const ScmObject_Symbol>(arg)));
 			}
 		}
-		break;
+
+		switch (symbolValue->getType())
+		{
+		case ScmObjectType::FUNCTION_CALL:
+			{
+				args = currentExec->getFunctionArgs();
+				std::vector<shared_ptr<ScmObject>> functionCalls(args->begin() + 1, args->end());
+				symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, functionCalls, currentExec->environment, currentExec->closureEnvironment);
+			}
+			break;
+		case ScmObjectType::FUNCTION_DEFINITION:
+			throw new exception("Gotten a function definition as value in a define lambda shorthand. This may never happen and represents an error in code.");
+			//symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, static_pointer_cast<ScmObject_FunctionDefinition>(symbolValue));
+			break;
+		default:
+			return returnError(_callStack, _result, "Defining lambda failed. Function body was not a function or lambda.");
+		}
+	}
+	break;
 	default:
 		return returnError(_callStack, _result, "The first argument of call to define was no symbol.");
 	}
 
-	currentExec->environment->addSymbol(symbolToDefine, symbolValue);
+	if (currentExec->closureEnvironment != nullptr)
+	{
+		currentExec->closureEnvironment->addSymbol(symbolToDefine, symbolValue);
+	}
+	else
+	{
+		globalEnvironment->addSymbol(symbolToDefine, symbolValue);
+	}
 	return endExecution(_callStack, _result, const_pointer_cast<ScmObject_Symbol>(symbolToDefine));
 }
 
@@ -1978,40 +2041,40 @@ inline void execSyntaxIf(std::stack<std::shared_ptr<ScmObject_FunctionExecution>
 		switch ((*args)[0]->getType())
 		{
 		case ScmObjectType::BOOL:
-			{
-				condition = (*args)[0];
-			}
-			break;
+		{
+			condition = (*args)[0];
+		}
+		break;
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[0]));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[0]));
+				return returnError(_callStack, _result, "Error while trying to execute 'if'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
+			}
 
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute 'if'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				switch (obj->getType())
-				{
-				case ScmObjectType::BOOL:
-					{
-						condition = obj;
-					}
-					break;
-#ifdef STRICT_IF
-				default:
-					return returnError(_callStack, _result, "Error in 'if'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not of type boolean.");
-#endif
-				}
+			switch (obj->getType())
+			{
+			case ScmObjectType::BOOL:
+			{
+				condition = obj;
 			}
 			break;
-		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(0, nullptr);
-				return;
+#ifdef STRICT_IF
+			default:
+				return returnError(_callStack, _result, "Error in 'if'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not of type boolean.");
+#endif
 			}
+		}
+		break;
+		case ScmObjectType::FUNCTION_CALL:
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[0]);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(0, nullptr);
+			return;
+		}
 #ifdef STRICT_IF
 		default:
 			return returnError(_callStack, _result, "Error in 'if'. First expression of if statement must be a boolean or evaluate to a boolean.");
@@ -2028,7 +2091,7 @@ inline void execSyntaxIf(std::stack<std::shared_ptr<ScmObject_FunctionExecution>
 		default:
 			condition = nullptr;
 			break;
-		}
+}
 	}
 
 	bool execTrue = true;
@@ -2085,29 +2148,29 @@ inline void execSyntaxSet(std::stack<std::shared_ptr<ScmObject_FunctionExecution
 		switch ((*args)[1]->getType())
 		{
 		case ScmObjectType::FUNCTION_CALL:
-			{
-				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[1]);
-				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-				currentExec->replaceArgAt(1, nullptr);
-				return;
-			}
+		{
+			shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[1]);
+			_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+			currentExec->replaceArgAt(1, nullptr);
+			return;
+		}
 		case ScmObjectType::SYMBOL:
+		{
+			shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[1]));
+
+			if (obj == nullptr)
 			{
-				shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[1]));
-
-				if (obj == nullptr)
-				{
-					return returnError(_callStack, _result, "Error while trying to execute 'set!'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-				}
-
-				valueToSet = obj;
+				return returnError(_callStack, _result, "Error while trying to execute 'set!'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 			}
-			break;
+
+			valueToSet = obj;
+		}
+		break;
 		default:
-			{
-				valueToSet = (*args)[1];
-			}
-			break;
+		{
+			valueToSet = (*args)[1];
+		}
+		break;
 		}
 	}
 
@@ -2161,31 +2224,31 @@ inline void execSyntaxBegin(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 			switch ((*it)->getType())
 			{
 			case ScmObjectType::SYMBOL:
+			{
+				if (lastArg)
 				{
-					if (lastArg)
-					{
-						shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[0]));
+					shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[0]));
 
-						if (obj == nullptr)
-						{
-							return returnError(_callStack, _result, "Error while trying to execute 'begin'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
-						}
-
-						return endExecution(_callStack, _result, const_pointer_cast<ScmObject>(obj));
-					}
-					else
+					if (obj == nullptr)
 					{
-						continue;
+						return returnError(_callStack, _result, "Error while trying to execute 'begin'. Symbol " + *static_pointer_cast<ScmObject_Symbol>((*args)[0])->getName() + " is not defined.");
 					}
+
+					return endExecution(_callStack, _result, const_pointer_cast<ScmObject>(obj));
 				}
-				break;
+				else
+				{
+					continue;
+				}
+			}
+			break;
 			case ScmObjectType::FUNCTION_CALL:
-				{
-					shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[argIndex]);
-					_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
-					currentExec->replaceArgAt(argIndex, nullptr);
-					return;
-				}
+			{
+				shared_ptr<const ScmObject_FunctionCall> funcCall = static_pointer_cast<const ScmObject_FunctionCall>((*args)[argIndex]);
+				_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
+				currentExec->replaceArgAt(argIndex, nullptr);
+				return;
+			}
 			default:
 				if (lastArg)
 				{
@@ -2230,10 +2293,10 @@ inline void execCustomFunction(std::stack<std::shared_ptr<ScmObject_FunctionExec
 			}
 			break;
 			default:
-				{
-					arg = *it;
-				}
-				break;
+			{
+				arg = *it;
+			}
+			break;
 			}
 		}
 
@@ -2251,27 +2314,47 @@ inline void execCustomFunction(std::stack<std::shared_ptr<ScmObject_FunctionExec
 		switch (obj->getType())
 		{
 		case ScmObjectType::FUNCTION_DEFINITION:
+		{
+			vector<std::shared_ptr<ScmObject>> funcs = static_pointer_cast<const ScmObject_FunctionDefinition>(obj)->getExecutable(evaluatedArgs);
+			
+			while (currentExec->currentUdfFunctionIndex < funcs.size())
 			{
-				std::shared_ptr<ScmObject> func = static_pointer_cast<const ScmObject_FunctionDefinition>(obj)->getExecutable(evaluatedArgs, currentExec->environment, currentExec->closureEnvironment);
+				switch (funcs[currentExec->currentUdfFunctionIndex]->getType())
+				{
+				case ScmObjectType::FUNCTION_EXECUTION:
+				{
+					_callStack.push(static_pointer_cast<ScmObject_FunctionExecution>(funcs[currentExec->currentUdfFunctionIndex]));
+					++currentExec->currentUdfFunctionIndex;
+					return;
+				}
+				break;
+				case ScmObjectType::INTERNAL_ERROR:
+				{
+					return returnError(_callStack, _result, static_pointer_cast<ScmObject_InternalError>(funcs[currentExec->currentUdfFunctionIndex])->getMessage());
+				}
+				break;
+				default:
+					// Not needed, unless simple data should be printed.
+					//cout << funcs[currentExec->currentUdfFunctionIndex]->getOutputString();
 
-				if (func->getType() == ScmObjectType::FUNCTION_DEFINITION)
-				{
-					endExecution(_callStack, _result, make_shared<ScmObject_FunctionDefinition>(*static_pointer_cast<ScmObject_FunctionDefinition>(func)));
-				}
-				else if (func->getType() == ScmObjectType::INTERNAL_ERROR)
-				{
-					return returnError(_callStack, _result, static_pointer_cast<ScmObject_InternalError>(func)->getMessage());
-				}
-				else
-				{
-					_callStack.pop();
-					_callStack.push(static_pointer_cast<ScmObject_FunctionExecution>(func));
+					++currentExec->currentUdfFunctionIndex;;
+
+					// Set the last instruction as our result. (If this is the last instruction.)
+					if (currentExec->currentUdfFunctionIndex >= funcs.size())
+					{
+						_result = funcs[currentExec->currentUdfFunctionIndex];
+					}
+
+					break;
 				}
 			}
-			break;
+		}
+		break;
 		default:
 			return returnError(_callStack, _result, "Tried calling user defined function but symbol supplied is not bound to a user defined function.");
 		}
+
+		return endExecution(_callStack, _result, _result);
 	}
 }
 
@@ -2339,6 +2422,8 @@ void execActual(std::stack<std::shared_ptr<ScmObject_FunctionExecution>>& _callS
 		return execBuiltInLoad(_callStack, _result);
 	case ScmObject_FunctionDefinition::FunctionType::SYNTAX_QUOTE:
 		return execSyntaxQuote(_callStack, _result);
+	case ScmObject_FunctionDefinition::FunctionType::SYNTAX_LAMBDA:
+		return execSyntaxLambda(_callStack, _result);
 	case ScmObject_FunctionDefinition::FunctionType::SYNTAX_DEFINE:
 		return execSyntaxDefine(_callStack, _result);
 	case ScmObject_FunctionDefinition::FunctionType::SYNTAX_IF:
