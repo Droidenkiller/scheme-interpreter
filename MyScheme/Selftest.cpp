@@ -484,11 +484,10 @@ bool testScheme()
 	{
 		result = false;
 	}
-	// TODO: Reenable this, to test large recursion. Disabled to lower startup time.
-	//if (!testLargeRecursion())
-	//{
-	//	result = false;
-	//}
+	if (!testLargeRecursion())
+	{
+		result = false;
+	}
 
 	return result;
 }
