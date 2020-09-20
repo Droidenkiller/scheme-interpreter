@@ -41,12 +41,15 @@ shared_ptr<const ScmObject> lookupInEnv(std::shared_ptr<const ScmObject_Function
 
 inline void returnError(std::stack<std::shared_ptr<ScmObject_FunctionExecution>>& _stack, shared_ptr<ScmObject>& _result, std::string _message)
 {
+	string stackTrace = "";
+
 	while (_stack.size() > 0)
 	{
+		stackTrace += _stack.top()->functionCall->getOutputString() + "\n";
 		_stack.pop();
 	}
 
-	_result = make_shared<ScmObject_InternalError>(_message);
+	_result = make_shared<ScmObject_InternalError>(_message + "\nStacktrace (experimental):\n" + stackTrace);
 }
 
 inline void endExecution(std::stack<std::shared_ptr<ScmObject_FunctionExecution>>& _stack, shared_ptr<ScmObject>& _result, shared_ptr<ScmObject> _newResult)
