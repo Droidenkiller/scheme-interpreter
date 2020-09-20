@@ -87,50 +87,64 @@ int main()
 
 	while (true)
 	{
-		getline(cin, currentInput);
-		needsMoreData = false;
+		string data;
+		cout << "> ";
 
-		while (currentInput.length() > 0 && !needsMoreData)
+		do
 		{
-			std::shared_ptr<ScmObject> object = Reader::ReadNextSymbol(currentInput);
-
-			// Later on this means we have not read to the end and need another line
-			if (object != nullptr)
+			getline(cin, currentInput);
+			// If there is data already, put a space to prevent newlines from being added without space.
+			if (data.compare("") != 0)
 			{
-				if (object->getType() == ScmObjectType::INTERNAL_ERROR)
-				{
-					currentInput = "";
-					cout << object->getOutputString() << endl;
-				}
-				else if (object->getType() == ScmObjectType::FUNCTION_CALL)
-				{
-					object = exec(static_pointer_cast<const ScmObject_FunctionCall>(object)->createFunctionExecution(nullptr, nullptr));
-					if (object != nullptr)
-						cout << object->getOutputString() << std::endl;
-				}
-				else if (object->getType() == ScmObjectType::SYMBOL)
-				{
-					shared_ptr<const ScmObject> obj = globalEnvironment->getSymbol(static_pointer_cast<ScmObject_Symbol>(object));
+				data += " ";
+			}
+			data += currentInput;
 
-					if (obj == nullptr)
+			string dataToGive = data;
+			while (dataToGive.length() > 0)
+			{
+				std::shared_ptr<ScmObject> object = Reader::ReadNextSymbol(dataToGive);
+
+				// Later on this means we have not read to the end and need another line
+				if (object != nullptr)
+				{
+					if (object->getType() == ScmObjectType::INTERNAL_ERROR)
 					{
-						cout << "Symbol " << object->getOutputString() << " is not defined." << std::endl;
+						currentInput = "";
+						cout << object->getOutputString() << endl;
+					}
+					else if (object->getType() == ScmObjectType::FUNCTION_CALL)
+					{
+						object = exec(static_pointer_cast<const ScmObject_FunctionCall>(object)->createFunctionExecution(nullptr, nullptr));
+						if (object != nullptr)
+							cout << object->getOutputString() << std::endl;
+					}
+					else if (object->getType() == ScmObjectType::SYMBOL)
+					{
+						shared_ptr<const ScmObject> obj = globalEnvironment->getSymbol(static_pointer_cast<ScmObject_Symbol>(object));
+
+						if (obj == nullptr)
+						{
+							cout << "Symbol " << object->getOutputString() << " is not defined." << std::endl;
+						}
+						else
+						{
+							cout << obj->getOutputString() << std::endl;
+						}
 					}
 					else
 					{
-						cout << obj->getOutputString() << std::endl;
+						cout << object->getOutputString() << endl;
 					}
+
+					data = dataToGive;
 				}
 				else
 				{
-					cout << object->getOutputString() << endl;
+					break;
 				}
 			}
-			else
-			{
-				needsMoreData = true;
-			}
-		}
+		} while (data.length() > 0);
 	}
 }
 

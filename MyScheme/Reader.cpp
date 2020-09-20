@@ -79,6 +79,7 @@ shared_ptr<ScmObject> readNumber(string& _remainingInput)
 		case ' ':
 		case ',':
 		case '\t':
+		case '\n':
 		case ')':
 			endOfNumberReached = true;
 			break;
@@ -151,6 +152,7 @@ shared_ptr<ScmObject_Symbol> readSymbol(string& _remainingInput)
 		case ' ':
 		case ',':
 		case '\t':
+		case '\n':
 		case ')':
 			endOfSymbol = true;
 			break;
@@ -168,7 +170,7 @@ void skipWhitespace(string& _remainingInput)
 {
 	for (; 0 < _remainingInput.length();)
 	{
-		if (_remainingInput[0] == ' ' || _remainingInput[0] == ',' || _remainingInput[0] == '\t')
+		if (_remainingInput[0] == ' ' || _remainingInput[0] == ',' || _remainingInput[0] == '\t' || _remainingInput[0] == '\n')
 		{
 			_remainingInput = _remainingInput.substr(1);
 		}
