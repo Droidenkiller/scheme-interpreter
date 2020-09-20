@@ -24,7 +24,6 @@ public:
 
 	std::shared_ptr<const ScmObject_Symbol> getFunctionSymbol() const;
 
-	// TODO: Is it possible to make the entries of the vector const?
 	const std::vector<std::shared_ptr<ScmObject>>* getFunctionArgs() const;
 
 	bool equals(const ScmObject* _other) const;
