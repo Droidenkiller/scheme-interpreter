@@ -3,6 +3,7 @@
 
 #define DEBUG
 #define ADD_FACTORIAL
+#define RUN_SELFTEST
 
 #include <iostream>
 #include "Reader.h"
@@ -55,14 +56,20 @@ int main()
 {
 	initGlobalEnv();
 
+#ifdef RUN_SELFTEST
 	if (testScheme())
 	{
-		cout << "Selftest concluded without errors.\n";
+		cout << "Selftest concluded without errors.\n\n";
 	}
 	else
 	{
-		cout << "Selftest concluded with errors.\nSee above messages for details.\n";
+		cout << "Selftest concluded with errors.\nSee above messages for details.\n\n";
 	}
+
+	// Reinitialize the global environment to remove possible changes from the selftest.
+	initGlobalEnv();
+	cout << "Reinitialized environment to remove symbols from selftest..." << endl;
+#endif
 
 	std::string currentInput;
 
@@ -72,6 +79,8 @@ int main()
 	std::shared_ptr<ScmObject> obj = Reader::ReadNextSymbol(currentInput);
 
 	exec(static_pointer_cast<ScmObject_FunctionCall>(obj)->createFunctionExecution(nullptr, nullptr));
+
+	cout << "Defined ! (factorial function). Remove ADD_FACTORIAL symbol in code to not add this function." << endl;
 #endif
 
 	bool needsMoreData = false;

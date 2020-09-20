@@ -26,6 +26,7 @@ std::shared_ptr<const ScmObject> Environment::getSymbol(const std::shared_ptr<co
 		else
 		{
 			result = it->second;
+			break;
 		}
 	}
 

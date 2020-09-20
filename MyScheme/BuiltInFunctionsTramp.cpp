@@ -4,6 +4,7 @@
 #include "BuiltInFunctionsTramp.h"
 #include "ScmObjectIncludes.h"
 #include "Reader.h"
+#include "Utils.h"
 #include <stack>
 #include <iostream>
 #include <fstream>
@@ -1527,8 +1528,6 @@ inline void execBuiltInPrint(std::stack<std::shared_ptr<ScmObject_FunctionExecut
 		++curArgIndex;
 	}
 
-	cout << endl;
-
 	return endExecution(_callStack, _result, nullptr);
 }
 
@@ -1574,6 +1573,13 @@ inline void execBuiltInDisplay(std::stack<std::shared_ptr<ScmObject_FunctionExec
 			cout << obj->getOutputString();
 		}
 		break;
+		case ScmObjectType::STRING:
+		{
+			string outputString = curArg->getDisplayString();
+			stringReplace(outputString, "\\n", "\n");
+			cout << outputString;
+		}
+		break;
 		default:
 			cout << curArg->getDisplayString();
 			break;
@@ -1581,8 +1587,6 @@ inline void execBuiltInDisplay(std::stack<std::shared_ptr<ScmObject_FunctionExec
 
 		++curArgIndex;
 	}
-
-	cout << endl;
 
 	return endExecution(_callStack, _result, nullptr);
 }
@@ -1802,40 +1806,52 @@ inline void execBuiltInLoad(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 			}
 
 			data += curLine;
+
+			// If there is no more data and we have reached the end of the file, we are done with loading.
+			if (data.compare("") == 0 && file.eof())
+			{
+				break;
+			}
+
 			// Create extra data string, so that Reader::ReadNextSymbol(...) can manipulate it.
 			string dataToGive = data;
 
-			shared_ptr<ScmObject> readObj = Reader::ReadNextSymbol(dataToGive);
+			shared_ptr<ScmObject> readObj;
 
-			if (readObj == nullptr)
+			do
 			{
-				if (file.eof())
+				readObj = Reader::ReadNextSymbol(dataToGive);
+
+				if (readObj == nullptr)
 				{
-					return returnError(_callStack, _result, "End of file reached too early. Probably missing one or more ')'.");
+					if (file.eof())
+					{
+						return returnError(_callStack, _result, "End of file reached too early. Probably missing one or more ')'.");
+					}
+					else
+					{
+						continue;
+					}
 				}
-				else
+
+				data = dataToGive;
+
+				switch (readObj->getType())
 				{
-					continue;
+				case ScmObjectType::FUNCTION_CALL:
+				{
+					execTramp(static_pointer_cast<const ScmObject_FunctionCall>(readObj)->createFunctionExecution(nullptr, nullptr));
 				}
-			}
-
-			data = dataToGive;
-
-			switch (readObj->getType())
-			{
-			case ScmObjectType::FUNCTION_CALL:
-			{
-				execTramp(static_pointer_cast<const ScmObject_FunctionCall>(readObj)->createFunctionExecution(nullptr, nullptr));
-			}
-			break;
-			case ScmObjectType::INTERNAL_ERROR:
-			{
-				return returnError(_callStack, _result, "Error in line " + to_string(curLineNumber) + ".");
-			}
-			break;
-			default:
 				break;
-			}
+				case ScmObjectType::INTERNAL_ERROR:
+				{
+					return returnError(_callStack, _result, "Error in line " + to_string(curLineNumber) + ": " + readObj->getOutputString());
+				}
+				break;
+				default:
+					break;
+				}
+			} while (data.compare("") != 0 && readObj != nullptr);
 		} while (!file.eof());
 
 		return endExecution(_callStack, _result, make_shared<ScmObject_String>("Executed"));
@@ -1988,19 +2004,17 @@ inline void execSyntaxDefine(std::stack<std::shared_ptr<ScmObject_FunctionExecut
 
 		switch (symbolValue->getType())
 		{
-		case ScmObjectType::FUNCTION_CALL:
+		case ScmObjectType::FUNCTION_DEFINITION:
+			throw new exception("Gotten a function definition as value in a define lambda shorthand. This may never happen and represents an error in code.");
+			//symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, static_pointer_cast<ScmObject_FunctionDefinition>(symbolValue));
+			break;
+		default:
 			{
 				args = currentExec->getFunctionArgs();
 				std::vector<shared_ptr<ScmObject>> functionCalls(args->begin() + 1, args->end());
 				symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, functionCalls, currentExec->environment, currentExec->closureEnvironment);
 			}
 			break;
-		case ScmObjectType::FUNCTION_DEFINITION:
-			throw new exception("Gotten a function definition as value in a define lambda shorthand. This may never happen and represents an error in code.");
-			//symbolValue = std::make_shared<ScmObject_FunctionDefinition>(unconstArgs, static_pointer_cast<ScmObject_FunctionDefinition>(symbolValue));
-			break;
-		default:
-			return returnError(_callStack, _result, "Defining lambda failed. Function body was not a function or lambda.");
 		}
 	}
 	break;
@@ -2114,6 +2128,18 @@ inline void execSyntaxIf(std::stack<std::shared_ptr<ScmObject_FunctionExecution>
 		_callStack.push(funcCall->createFunctionExecution(currentExec->environment, currentExec->closureEnvironment));
 	}
 	break;
+	case ScmObjectType::SYMBOL:
+	{
+		std::shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>(usedExpr));
+
+		if (obj == nullptr)
+		{
+			return returnError(_callStack, _result, "Tried returning symbol value in if expression but symbol was not defined. Symbol was " + usedExpr->getOutputString() + ".");
+		}
+
+		return endExecution(_callStack, _result, const_pointer_cast<ScmObject>(obj));
+	}
+	break;
 	default:
 		return endExecution(_callStack, _result, usedExpr);
 	}
@@ -2176,9 +2202,15 @@ inline void execSyntaxSet(std::stack<std::shared_ptr<ScmObject_FunctionExecution
 
 	bool setSuccessful = false;
 	setSuccessful = currentExec->closureEnvironment->setSymbol(symbol, valueToSet);
+
+	if (currentExec->closureEnvironment != nullptr)
+	{
+		setSuccessful = currentExec->closureEnvironment->setSymbol(symbol, valueToSet);
+	}
+	
 	if (!setSuccessful)
 	{
-		setSuccessful = currentExec->environment->setSymbol(symbol, valueToSet);
+		setSuccessful = globalEnvironment->setSymbol(symbol, valueToSet);
 	}
 
 	if (setSuccessful)
@@ -2227,7 +2259,7 @@ inline void execSyntaxBegin(std::stack<std::shared_ptr<ScmObject_FunctionExecuti
 			{
 				if (lastArg)
 				{
-					shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*args)[0]));
+					shared_ptr<const ScmObject> obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>((*it)));
 
 					if (obj == nullptr)
 					{
@@ -2292,6 +2324,15 @@ inline void execCustomFunction(std::stack<std::shared_ptr<ScmObject_FunctionExec
 				return;
 			}
 			break;
+			case ScmObjectType::SYMBOL:
+			{
+				arg = const_pointer_cast<ScmObject>(lookupInEnv(currentExec, static_pointer_cast<const ScmObject_Symbol>(*it)));
+				if (arg == nullptr)
+				{
+					return returnError(_callStack, _result, "Symbol " + (*it)->getOutputString() + " has not been defined.");
+				}
+			}
+			break;
 			default:
 			{
 				arg = *it;
@@ -2323,7 +2364,8 @@ inline void execCustomFunction(std::stack<std::shared_ptr<ScmObject_FunctionExec
 				{
 				case ScmObjectType::FUNCTION_EXECUTION:
 				{
-					_callStack.push(static_pointer_cast<ScmObject_FunctionExecution>(funcs[currentExec->currentUdfFunctionIndex]));
+					currentExec->lastUdfExecution = static_pointer_cast<ScmObject_FunctionExecution>(funcs[currentExec->currentUdfFunctionIndex]);
+					_callStack.push(currentExec->lastUdfExecution);
 					++currentExec->currentUdfFunctionIndex;
 					return;
 				}
@@ -2331,6 +2373,31 @@ inline void execCustomFunction(std::stack<std::shared_ptr<ScmObject_FunctionExec
 				case ScmObjectType::INTERNAL_ERROR:
 				{
 					return returnError(_callStack, _result, static_pointer_cast<ScmObject_InternalError>(funcs[currentExec->currentUdfFunctionIndex])->getMessage());
+				}
+				break;
+				case ScmObjectType::SYMBOL:
+				{
+					++currentExec->currentUdfFunctionIndex;;
+
+					if (currentExec->currentUdfFunctionIndex >= funcs.size())
+					{
+						std::shared_ptr<const ScmObject> obj;
+						if (currentExec->lastUdfExecution != nullptr)
+						{
+							obj = lookupInEnv(currentExec->lastUdfExecution, static_pointer_cast<ScmObject_Symbol>(funcs[currentExec->currentUdfFunctionIndex - 1]));
+						}
+						else
+						{
+							obj = lookupInEnv(currentExec, static_pointer_cast<ScmObject_Symbol>(funcs[currentExec->currentUdfFunctionIndex - 1]));
+						}
+
+						if (obj == nullptr)
+						{
+							return returnError(_callStack, _result, "User defined function was supposed to return value of a symbol, but symbol was not defined. Symbol was " + funcs[currentExec->currentUdfFunctionIndex - 1]->getOutputString() + ".");
+						}
+
+						_result = const_pointer_cast<ScmObject>(obj);
+					}
 				}
 				break;
 				default:
@@ -2342,7 +2409,7 @@ inline void execCustomFunction(std::stack<std::shared_ptr<ScmObject_FunctionExec
 					// Set the last instruction as our result. (If this is the last instruction.)
 					if (currentExec->currentUdfFunctionIndex >= funcs.size())
 					{
-						_result = funcs[currentExec->currentUdfFunctionIndex];
+						_result = funcs[currentExec->currentUdfFunctionIndex - 1];
 					}
 
 					break;

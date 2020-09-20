@@ -157,6 +157,7 @@
     <ClCompile Include="ScmObject_Symbol.cpp" />
     <ClCompile Include="ScmObject_FunctionExecution.cpp" />
     <ClCompile Include="Selftest.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BuiltinFunctions.h" />
@@ -177,6 +178,7 @@
     <ClInclude Include="ScmObject_Symbol.h" />
     <ClInclude Include="ScmObject_FunctionExecution.h" />
     <ClInclude Include="Selftest.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

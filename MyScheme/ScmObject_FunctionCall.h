@@ -13,6 +13,7 @@ class ScmObject_FunctionCall :
 friend class ScmObject_FunctionExecution;
 
 private:
+	// TODO: This may be a udf instead of a symbol. Implement it this way.
 	std::shared_ptr<ScmObject_Symbol> m_functionSymbol;
 	std::vector<std::shared_ptr<ScmObject>> m_functionArgs;
 

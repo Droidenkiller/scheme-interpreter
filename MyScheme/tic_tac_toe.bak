@@ -1,3 +1,5 @@
+;(define board (list (list 0 0 0) (list 0 0 0) (list 0 0 0)))
+
 (define field00 0)
 (define field01 0)
 (define field02 0)
@@ -41,9 +43,9 @@
 				(eq? field10 0)
 			;else
 				(if (eq? col 2)
-					(eq? field11 0)
+					(eq? field11)
 				;else
-					(eq? field12 0)
+					(eq? field12)
 				)
 			)
 		;else (row 3)
@@ -57,7 +59,9 @@
 				)
 			)
 		)
-        )
+	)
+)
+			
 )
 
 (define (convert-input-to-number input)
@@ -83,7 +87,6 @@
 		(begin
 			(display "Chosen row: ")
 			(display row)
-			(display "\n")
 			(convert-input-to-number row)
 		)
 	;else
@@ -101,12 +104,11 @@
 		(begin
 			(display "Chosen col: ")
 			(display col)
-			(display "\n")
 			(convert-input-to-number col)
 		)
 	;else
 		(begin
-			(display "Column entered is not a valid column. Please enter a number in the range 1-3.\n")
+			(display "Columg enterd is not a valid column. Please enter a number in the range 1-3.\n")
 			(get-row-input)
 		)
 	)
@@ -164,7 +166,7 @@
 	;else
 		(begin
 			(display "Field is already taken. Please choose a different field.")
-			(get-input)
+			(get-input))
 		)
 	)
 )
@@ -174,47 +176,9 @@
 	(display player)
 	(display "'s turn.\n")
 	(define row_col (get-input))
-	(define row (car row_col))
-	(define col (cdr row_col))
-	(if (eq? row 1)
-		(if (eq? col 1)
-			(set! field00 player)
-		;else
-			(if (eq? col 2)
-				(set! field01 player)
-			;else
-				(set! field02 player)
-			)
-		)
-	;else
-		(if (eq? row 2)
-			(if (eq? col 1)
-				(set! field10 player)
-			;else
-				(if (eq? col 2)
-					(set! field11 player)
-				;else
-					(set! field12 player)
-				)
-			)
-		;else (row 3)
-			(if (eq? col 1)
-				(set! field20 player)
-			;else
-				(if (eq? col 2)
-					(set! field21 player)
-				;else
-					(set! field22 player)
-				)
-			)
-		)
-	)
-)
 
-(define (main player)
-	(make-next-move player)
-	(print-board)
-	(define winState (check-win-state))
+(define (main)
+	(define winState (check_win_state))
 	(if (> winState 0)
 		(if (eq? winState 1)
 			(print "Player 1 won.")
@@ -222,56 +186,12 @@
 			(print "Player 2 won.")
 		)
 	;else
-		(main (if (eq? player 1) 2 1)) ; Call main recursively until a player has won.
+		(main) ; Call main recursively until a player has won.
 	)
 )
 
-(define (check-row-win field1 field2 field3)
-	(if (eq? field1 field2)
-		(if (eq? field2 field3)
-			field1
-		;else
-			0
-		)
-	;else
-		0
-	)
+(define (check_win_state)
+	(print "Check win state")
 )
 
-(define (check-win-state)
-	(define winner (check-row-win field00 field01 field02))
-	(if (> winner 0)
-		winner
-	;else
-		(begin
-			(set! winner (check-row-win field10 field11 field12))
-			(if (> winner 0)
-				winner
-			;else
-				(begin
-					(set! winner (check-row-win field20 field21 field22))
-					(if (> winner 0)
-						winner
-					;else
-						(begin
-							(set! winner (check-row-win field00 field11 field22))
-							(if (> winner 0)
-								winner
-							;else
-								(begin
-									(set! winner (check-row-win field02 field11 field20))
-									winner
-								)
-							)
-						)
-					)
-				)
-			)
-		)
-	)
-)
-
-(display "Started tic tac toe...\n")
-(display "Note: Row and column indexes start at 1.\n")
 (print-board)
-(main 1)

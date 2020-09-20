@@ -78,6 +78,7 @@ shared_ptr<ScmObject> readNumber(string& _remainingInput)
 			break;
 		case ' ':
 		case ',':
+		case '\t':
 		case ')':
 			endOfNumberReached = true;
 			break;
@@ -116,7 +117,7 @@ shared_ptr<ScmObject> readBool(string& _remainingInput)
 
 	_remainingInput = _remainingInput.substr(1);
 
-	if (_remainingInput.length() > 1 && !(_remainingInput[1] == ' ' || _remainingInput[1] == ',' || _remainingInput[1] == ')'))
+	if (_remainingInput.length() > 1 && !(_remainingInput[1] == ' ' || _remainingInput[1] == ',' || _remainingInput[1] == ')' || _remainingInput[1] == '\t' || _remainingInput[1] == '\n'))
 	{
 		return make_shared<ScmObject_InternalError>("Tried reading bool but got more characters than expected. Please only use #t or #f.");
 	}
@@ -149,6 +150,7 @@ shared_ptr<ScmObject_Symbol> readSymbol(string& _remainingInput)
 		{
 		case ' ':
 		case ',':
+		case '\t':
 		case ')':
 			endOfSymbol = true;
 			break;
@@ -166,7 +168,7 @@ void skipWhitespace(string& _remainingInput)
 {
 	for (; 0 < _remainingInput.length();)
 	{
-		if (_remainingInput[0] == ' ' || _remainingInput[0] == ',')
+		if (_remainingInput[0] == ' ' || _remainingInput[0] == ',' || _remainingInput[0] == '\t')
 		{
 			_remainingInput = _remainingInput.substr(1);
 		}
@@ -361,7 +363,7 @@ shared_ptr<ScmObject> Reader::readFunctionKeyword(string& _remainingInput)
 		// Remove the closing paranthesis
 		_remainingInput = _remainingInput.substr(1);
 
-		return make_shared<ScmObject_FunctionCall>(functionSymbol, args);
+		return make_shared<ScmObject_FunctionCall>(static_pointer_cast<ScmObject_Symbol>(functionSymbol), args);
 	}
 	//}
 }
@@ -438,6 +440,8 @@ shared_ptr<ScmObject> Reader::ReadNextSymbol(string& _remainingInput)
 		{
 		case ' ':
 		case ',':
+		case '\t':
+		case '\n':
 			break;
 		case '"':
 			_remainingInput = input.substr(i);

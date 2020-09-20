@@ -14,6 +14,7 @@ public:
 	std::shared_ptr<Environment> environment;
 	std::shared_ptr<Environment> closureEnvironment;
 	int currentUdfFunctionIndex = 0;
+	std::shared_ptr<ScmObject_FunctionExecution> lastUdfExecution = nullptr;
 
 	ScmObject_FunctionExecution(const ScmObject_FunctionCall* m_functionCall, std::shared_ptr<Environment> _env, std::shared_ptr<Environment> _closureEnv);
 
